@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing</title>
+    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script> -->
+    <script src="scripts/aframe-ar.js"></script>
+    <style>
+        /* #box1 {
+            background-color: cadetblue;
+        }
+
+        #box2 {
+            background-color: lightcoral;
+        }
+
+        #box3 {
+            background-color: lightslategrey;
+        } */
+
+        /* .boxes {
+            border: 2px solid black;
+            width: 100px;
+            height: 100px;
+            z-index: 9999;
+            position: relative;
+        } */
+    </style>
+</head>
+
+<body>
+    <!-- <div id="box1" class="boxes"></div>
+    <div id="box2" class="boxes"></div>
+    <div id="box3" class="boxes"></div> -->
+
+    <!-- <a-scene>
+        <a-box id="abox1" color="red" position="0 1.5 -5"></a-box>
+    </a-scene> -->
+
+    <a-scene embedded arjs>
+        <a-marker preset="hiro">
+            <a-box id='my-box' position='0 0.5 0' material='opacity: 0.5;'></a-box>
+        </a-marker>
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <!-- AFRAME.ANIME seems to be an alias for super-animejs, which itself is an alias for anime.js, but this
+    version still doesn't seem to be able to handle arrays of keyframes longer than one! -->
+    
+    <script>
+        AFRAME.ANIME({
+            targets: "#my-box",
+            keyframes: [
+                // { position: "1.5 0.5 0" },
+                // { position: "0 0.5 0" },
+                { position: "0 0.5 1.5" },
+                { position: "0 0.5 0" }
+            ],
+            duration: 5000
+        })
+    </script>
+
+    <!-- <script>
+        AFRAME.ANIME({
+            targets: "#abox1",
+            position: "2 1.5 -3",
+            duration: 5000
+        })
+    </script> -->
+
+    <!-- <script>
+        anime({
+            targets: ".boxes",
+            width: 200
+        })
+    </script> -->
+</body>
+
+</html>

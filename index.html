@@ -6,12 +6,21 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Line Rider</title>
+    
+    <!-- A-Frame.js -->
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-    <!-- import script locally instead of pulling from internet to avoid download limit -->
+    
+    <!-- AR.js: import script locally instead of pulling from internet to avoid download limit -->
     <script src="scripts/aframe-ar.js"></script>
     <!-- <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script> -->
-    <!-- import anime module separately, as AFRAME.ANIME doesn't seem to work well' -->
+    
+    <!-- anime.js: import anime module separately, as AFRAME.ANIME doesn't seem to work well' -->
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+
+    <!-- merge-images.js: import script locally instead of pulling from internet to avoid download limit -->
+    <script src="scripts/merge-images.js"></script>
+    <!-- <script src="https://unpkg.com/merge-images"></script> -->
+
     <script>
         window.onload = function () {
             document
@@ -26,12 +35,24 @@
                         targets: "#my-box",
                         keyframes: [
                             { position: "1.5 0.5 0" },
-                            { position: "0 0.5 0" },
+                            { position: "1.5 0.5 1.5" },
                             { position: "0 0.5 1.5" },
                             { position: "0 0.5 0" }
                         ],
+                        // easing: "linear",
                         duration: 5000
                     });
+
+                    // var canvas = document.querySelector("#myCanvas");
+
+                    // // here is the most important part because if you dont replace you will get a DOM 18 exception.
+                    // var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+
+                    // window.location.href = image; // it will save locally
+
+                    // document.querySelector('a-scene').components.screenshot.getCanvas('equirectangular')
+
+                    // document.querySelector('a-scene').components.screenshot.capture('perspective')
                 });
         };
     </script>
@@ -61,17 +82,24 @@
 </head>
 
 <body style='margin : 0px; overflow: hidden;'>
-    
+
     <div class="buttons">
-        <button class="animate-button">Start Animation</button>
+        <!-- <button class="animate-button">Start Animation</button> -->
+        <button id="snap-img">SNAPSHOT</button>
+        <a href="#" id="download-link">DOWNLOAD</a>
     </div>
 
-    <a-scene embedded arjs>
+    <!-- <a-scene embedded arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;" antialias="true"></a-scene> -->
+
+    <a-scene id="my-scene" embedded arjs>
         <a-marker preset="hiro">
             <a-box id='my-box' position='0 0.5 0' material='opacity: 0.5;'></a-box>
         </a-marker>
         <a-entity camera></a-entity>
     </a-scene>
+
+    <script src="my-scripts/screenshot.js"></script>
+
 </body>
 
 </html>
