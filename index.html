@@ -6,14 +6,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Line Rider</title>
-    
+
     <!-- A-Frame.js -->
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-    
+
     <!-- AR.js: import script locally instead of pulling from internet to avoid download limit -->
     <script src="online-scripts/aframe-ar.js"></script>
     <!-- <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script> -->
-    
+
     <!-- anime.js: import anime module separately, as AFRAME.ANIME doesn't seem to work well' -->
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
 
@@ -42,6 +42,21 @@
                         // easing: "linear",
                         duration: 5000
                     });
+
+                    var bl = new THREE.Vector3(0, -5, 0);
+                    var br = new THREE.Vector3(3, -5, 0);
+                    var tr = new THREE.Vector3(3, 0, 0);
+                    var tl = new THREE.Vector3(0, 0, 0);
+
+                    bl = toScreenPosition(document.querySelector("#my-box").object3D, bl);
+                    br = toScreenPosition(document.querySelector("#my-box").object3D, br);
+                    tr = toScreenPosition(document.querySelector("#my-box").object3D, tr);
+                    tl = toScreenPosition(document.querySelector("#my-box").object3D, tl);
+
+                    // console.log(bl, br, tr, tl);
+
+                    console.log(toScreenPosition(document.querySelector("#my-box").object3D, new THREE.Vector3(0, 0, 0)));
+                    console.log(toScreenPositionMesh(new THREE.Vector3(-1.5, 2.5, 0)));
                 });
         };
     </script>
@@ -79,15 +94,65 @@
     </div>
 
     <!-- <a-scene id="my-scene" embedded arjs stats> -->
+    <!-- <a-scene id="my-scene" embedded arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"> -->
     <a-scene id="my-scene" embedded arjs>
         <a-marker preset="hiro">
             <a-box id='my-box' position='0 0.5 0' material='opacity: 0.5;'></a-box>
+            <!-- <a-box id='my-page' position='0 0.5 0' material='opacity: 0.5;'></a-box> -->
+            <a-plane color="#CCC" height="5" width="3" position='1 0 2' rotation="-90 0 0"></a-plane>
         </a-marker>
         <a-entity camera></a-entity>
     </a-scene>
 
     <!-- or could use onload callback to load this script after elements are created -->
     <script src="my-scripts/screenshot.js"></script>
+
+    <script>
+        function toScreenPosition(obj, vec) {
+            // var vector = new THREE.Vector3();
+            var vector = vec;
+
+            var cameraEl = document.querySelector('a-scene').camera;
+            var videoEl = document.querySelector('video');
+
+            var widthHalf = 0.5 * videoEl.videoWidth;
+            var heightHalf = 0.5 * videoEl.videoHeight;
+
+            obj.updateMatrixWorld();
+            vector.setFromMatrixPosition(obj.matrixWorld);
+            vector.project(cameraEl);
+
+            // vector.x = (vector.x * widthHalf) + widthHalf;
+            // vector.y = - (vector.y * heightHalf) + heightHalf;
+
+            return {
+                x: vector.x,
+                y: vector.y
+            };
+        };
+
+        function toScreenPositionMesh(vec) {
+
+            planeMesh = document.querySelector("a-plane").object3DMap.mesh;
+            planeMesh.localToWorld(vec);
+
+            var cameraEl = document.querySelector('a-scene').camera;
+            var videoEl = document.querySelector('video');
+
+            var widthHalf = 0.5 * videoEl.videoWidth;
+            var heightHalf = 0.5 * videoEl.videoHeight;
+
+            vec.project(cameraEl);
+
+            vec.x = (vec.x * widthHalf) + widthHalf;
+            vec.y = - (vec.y * heightHalf) + heightHalf;
+
+            return {
+                x: vec.x,
+                y: vec.y
+            };
+        };
+    </script>
 
 </body>
 
