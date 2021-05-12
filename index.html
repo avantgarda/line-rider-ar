@@ -24,7 +24,7 @@
     <script>
         window.onload = function () {
             document
-                .querySelector("#snap-img")
+                .querySelector("#animate-button")
                 .addEventListener("click", function () {
                     // here you can change also a-scene or a-entity properties, like
                     // changing your 3D model source, size, position and so on
@@ -73,13 +73,12 @@
 <body style='margin : 0px; overflow: hidden;'>
 
     <div class="buttons">
-        <!-- <button class="animate-button">Start Animation</button> -->
+        <button id="animate-button">Start Animation</button>
         <button id="snap-img">SNAPSHOT</button>
         <a href="#" id="download-link">DOWNLOAD</a>
     </div>
 
-    <!-- <a-scene embedded arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;" antialias="true"></a-scene> -->
-
+    <!-- <a-scene id="my-scene" embedded arjs stats> -->
     <a-scene id="my-scene" embedded arjs>
         <a-marker preset="hiro">
             <a-box id='my-box' position='0 0.5 0' material='opacity: 0.5;'></a-box>
