@@ -24,7 +24,7 @@
     <script>
         window.onload = function () {
             document
-                .querySelector(".animate-button")
+                .querySelector("#snap-img")
                 .addEventListener("click", function () {
                     // here you can change also a-scene or a-entity properties, like
                     // changing your 3D model source, size, position and so on
@@ -42,17 +42,6 @@
                         // easing: "linear",
                         duration: 5000
                     });
-
-                    // var canvas = document.querySelector("#myCanvas");
-
-                    // // here is the most important part because if you dont replace you will get a DOM 18 exception.
-                    // var image = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
-
-                    // window.location.href = image; // it will save locally
-
-                    // document.querySelector('a-scene').components.screenshot.getCanvas('equirectangular')
-
-                    // document.querySelector('a-scene').components.screenshot.capture('perspective')
                 });
         };
     </script>
@@ -98,6 +87,7 @@
         <a-entity camera></a-entity>
     </a-scene>
 
+    <!-- or could use onload callback to load this script after elements are created -->
     <script src="my-scripts/screenshot.js"></script>
 
 </body>
