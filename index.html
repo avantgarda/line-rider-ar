@@ -23,6 +23,48 @@
 
     <script>
         window.onload = function () {
+
+            var cornerArr = [];
+
+            // var videoEl = document.querySelector('video');
+            // var canvasEl = document.querySelector('canvas');
+
+            // const xCoeff = canvasEl.width / videoEl.videoWidth;
+            // const yCoeff = canvasEl.height / videoEl.videoHeight;
+
+            // const yOffset = videoEl.style.marginTop;
+
+            const xCoeff = 1848 / 640;
+            const yCoeff = 1386 / 480;
+            
+            const yOffset = -218;
+
+            for (var i = 0; i < 4; i++) {
+                var cornerElem = document.createElement('div');
+                cornerElem.className = "corners";
+                document.body.appendChild(cornerElem);
+                cornerArr.push(cornerElem);
+            }
+
+            function renderCorners() {
+                var bl = new THREE.Vector3(-1.5, -2.5, 0);
+                var br = new THREE.Vector3(1.5, -2.5, 0);
+                var tr = new THREE.Vector3(1.5, 2.5, 0);
+                var tl = new THREE.Vector3(-1.5, 2.5, 0);
+
+                var cornerVectors = [bl, br, tr, tl];
+
+                for (var i = 0; i < 4; i++) {
+                    var proj = toScreenPositionMesh(cornerVectors[i]);
+                    console.log(proj);
+                    var cornerElem = cornerArr[i];
+                    cornerElem.style.left = (proj.x * xCoeff) + 'px';
+                    cornerElem.style.top = (proj.y * yCoeff + yOffset) + 'px';
+                }
+            }
+
+            setInterval(renderCorners, 1000/24);
+
             document
                 .querySelector("#animate-button")
                 .addEventListener("click", function () {
@@ -43,20 +85,31 @@
                         duration: 5000
                     });
 
-                    var bl = new THREE.Vector3(0, -5, 0);
-                    var br = new THREE.Vector3(3, -5, 0);
-                    var tr = new THREE.Vector3(3, 0, 0);
-                    var tl = new THREE.Vector3(0, 0, 0);
+                    // var bl = new THREE.Vector3(0, -5, 0);
+                    // var br = new THREE.Vector3(3, -5, 0);
+                    // var tr = new THREE.Vector3(3, 0, 0);
+                    // var tl = new THREE.Vector3(0, 0, 0);
 
-                    bl = toScreenPosition(document.querySelector("#my-box").object3D, bl);
-                    br = toScreenPosition(document.querySelector("#my-box").object3D, br);
-                    tr = toScreenPosition(document.querySelector("#my-box").object3D, tr);
-                    tl = toScreenPosition(document.querySelector("#my-box").object3D, tl);
+                    // bl = toScreenPosition(document.querySelector("#my-box").object3D, bl);
+                    // br = toScreenPosition(document.querySelector("#my-box").object3D, br);
+                    // tr = toScreenPosition(document.querySelector("#my-box").object3D, tr);
+                    // tl = toScreenPosition(document.querySelector("#my-box").object3D, tl);
 
                     // console.log(bl, br, tr, tl);
 
-                    console.log(toScreenPosition(document.querySelector("#my-box").object3D, new THREE.Vector3(0, 0, 0)));
-                    console.log(toScreenPositionMesh(new THREE.Vector3(-1.5, 2.5, 0)));
+                    // console.log(toScreenPosition(document.querySelector("#my-box").object3D, new THREE.Vector3(0, 0, 0)));
+
+                    // var bl = new THREE.Vector3(-1.5, -2.5, 0);
+                    // var br = new THREE.Vector3(1.5, -2, 5, 0);
+                    // var tr = new THREE.Vector3(1.5, 2.5, 0);
+                    // var tl = new THREE.Vector3(-1.5, 2.5, 0);
+
+                    // console.log(toScreenPositionMesh(bl));
+                    // console.log(toScreenPositionMesh(br));
+                    // console.log(toScreenPositionMesh(tr));
+                    // console.log(toScreenPositionMesh(tl));
+
+                    renderCorners();
                 });
         };
     </script>
@@ -82,6 +135,17 @@
             width: 6em;
             height: 4em;
         }
+
+        .corners {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            height: 25px;
+            width: 25px;
+            background-color: rgb(41, 207, 26);
+            border-radius: 50%;
+            display: inline-block;
+        }
     </style>
 </head>
 
@@ -92,6 +156,8 @@
         <button id="snap-img">SNAPSHOT</button>
         <a href="#" id="download-link">DOWNLOAD</a>
     </div>
+
+    <!-- <span class="corners"></span> -->
 
     <!-- <a-scene id="my-scene" embedded arjs stats> -->
     <!-- <a-scene id="my-scene" embedded arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"> -->
