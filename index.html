@@ -47,8 +47,8 @@
 
                 var cornerArr = [];
 
-                var videoEl = document.querySelector('video');
-                var canvasEl = document.querySelector('canvas');
+                var videoEl = document.querySelector('#arjs-video');
+                var canvasEl = document.querySelector('.a-canvas');
 
                 for (var i = 0; i < 4; i++) {
                     var cornerElem = document.createElement('div');
@@ -220,7 +220,14 @@
 </head>
 
 <!-- <body style='margin : 0px; overflow: hidden;'> -->
+
 <body>
+
+    <!-- <video id="myVideo" preload="auto" autoPlay loop muted></video>
+
+    <div class="canvas-container">
+        <canvas id="myCanvas"></canvas>
+    </div> -->
 
     <div class="buttons">
         <button id="animate-button">Start Animation</button>
@@ -249,7 +256,7 @@
             planeMesh.localToWorld(vec);
 
             var cameraEl = document.querySelector('a-scene').camera;
-            var videoEl = document.querySelector('video');
+            var videoEl = document.querySelector('#arjs-video');
 
             var widthHalf = 0.5 * videoEl.videoWidth;
             var heightHalf = 0.5 * videoEl.videoHeight;

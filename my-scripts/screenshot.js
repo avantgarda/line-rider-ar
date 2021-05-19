@@ -1,5 +1,5 @@
 document.getElementById("snap-img").addEventListener("click", function () {
-    let frame = captureVideoFrame("video", "png");
+    let frame = captureVideoFrame("#arjs-video", "png");
     frame = frame.dataUri;
     let link = document.getElementById("download-link", "png");
     link.setAttribute("download", "AR.png");
