@@ -19,6 +19,8 @@
 
     <script src="online-scripts/glfx.js"></script>
 
+    <script src="online-scripts/canny.min.js"></script>
+
     <script>
 
         window.onload = function () {
@@ -27,6 +29,7 @@
 
                 console.log("Scene loaded!");
 
+                const buttonEl = document.querySelector("#action-button");
                 const markerEl = document.querySelector("a-marker");
                 const cameraEl = document.querySelector('a-scene').camera;
                 const videoEl = document.querySelector('#arjs-video');
@@ -111,14 +114,14 @@
                     var h = parseInt(videoEl.videoHeight);
                     var w = h * drawAreaWidth / drawAreaHeight;
 
-                    // perspective transform
+                    // perspective transform and other filters
                     var srcPts = getCorners();
                     var destPts = [0, 0, w, 0, w, h, 0, h];
-                    canvasGL.draw(texture).perspective(srcPts, destPts).update();
+                    canvasGL.draw(texture).perspective(srcPts, destPts).denoise(20).update();
 
                     //// crop WebGL canvas
 
-                    // create temporary canvas (before converting back to WebGL)
+                    // create new smaller canvas
                     var croppedCanvas = document.createElement("canvas");
                     var croppedContext = croppedCanvas.getContext("2d");
 
@@ -127,16 +130,10 @@
 
                     croppedContext.drawImage(canvasGL, 0, 0);
 
-                    // convert back to WebGL
-                    var croppedCanvasGL = fx.canvas();
-                    croppedCanvasGL.draw(croppedCanvasGL.texture(croppedCanvas)).update();
+                    window.canny = CannyJS.canny(croppedCanvas, 100, 50, 1.4, 3);
+                    canny.drawOn(croppedCanvas);
 
-                    // imageData = CannyJS.canny(canvas);
-                    // // overwrites the original canvas 
-                    // image.drawOn(mycanvas);
-
-                    // croppedCanvasGL.draw(croppedCanvasGL.texture(croppedCanvas)).denoise(20).update();
-                    downloadURI(croppedCanvasGL.toDataURL("image/png"), "cropped");
+                    downloadURI(croppedCanvas.toDataURL("image/png"), "cropped");
                 }
 
                 // animation
@@ -154,16 +151,24 @@
                     });
                 }
 
-                document
-                    .querySelector("#action-button")
-                    .addEventListener("click", function () {
+                document.addEventListener("markerFound", function () {
+                    buttonEl.style.pointerEvents = "auto";
+                    buttonEl.textContent="Start Action";
+                });
 
-                        // animate
-                        // animation();
+                document.addEventListener("markerLost", function () {
+                    buttonEl.style.pointerEvents = "none";
+                    buttonEl.textContent="Marker Not Found";
+                });
 
-                        // perspective transform
-                        perspective();
-                    });
+                buttonEl.addEventListener("click", function () {
+                    
+                    // animate
+                    // animation();
+
+                    // perspective transform
+                    perspective();
+                });
             });
         };
     </script>
@@ -197,7 +202,7 @@
 <body style='margin: 0px; overflow: hidden;'>
 
     <div class="buttons">
-        <button id="action-button">Start Action</button>
+        <button id="action-button" style="pointer-events: none">Marker Not Found</button>
     </div>
 
     <a-scene id="my-scene" embedded arjs>
