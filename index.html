@@ -17,86 +17,33 @@
     <!-- anime.js: import anime module separately, as AFRAME.ANIME doesn't seem to work well' -->
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
 
-    <!-- merge-images.js: import script locally instead of pulling from internet to avoid download limit -->
-    <script src="online-scripts/merge-images.js"></script>
-    <!-- <script src="https://unpkg.com/merge-images"></script> -->
-
     <script src="online-scripts/glfx.js"></script>
 
     <script>
-        // import perspectiveTransform from 'perspective-transform';
 
         window.onload = function () {
 
             window.addEventListener('arjs-video-loaded', () => {
-                const marker = document.querySelector('a-marker');
-                const scene = document.querySelector('a-scene');
-                // const video = document.querySelector('#arjs-video');
-                let check;
 
-                console.log("Scene loaded!")
+                console.log("Scene loaded!");
 
-                var plane = document.createElement('a-plane');
-                plane.setAttribute('color', '#CCC');
-                plane.setAttribute('opacity', '1');
-                plane.setAttribute('z-index', '1000');
-                // plane.setAttribute('src', '#arjs-video');
-                plane.setAttribute('height', '5');
-                plane.setAttribute('width', '3');
-                plane.setAttribute('position', '1 0 2');
-                plane.setAttribute('rotation', '-90 0 0');
-                marker.appendChild(plane);
-                // scene.appendChild(plane);
+                const markerEl = document.querySelector("a-marker");
+                const cameraEl = document.querySelector('a-scene').camera;
+                const videoEl = document.querySelector('#arjs-video');
 
-                var cornerArr = [];
-
-                var videoEl = document.querySelector('#arjs-video');
-                var canvasEl = document.querySelector('.a-canvas');
-
-                for (var i = 0; i < 4; i++) {
-                    var cornerElem = document.createElement('div');
-                    cornerElem.className = "corners";
-                    document.body.appendChild(cornerElem);
-                    cornerArr.push(cornerElem);
-                }
-
-                function renderCorners() {
-                    var bl = new THREE.Vector3(-1.5, -2.5, 0);
-                    var br = new THREE.Vector3(1.5, -2.5, 0);
-                    var tr = new THREE.Vector3(1.5, 2.5, 0);
-                    var tl = new THREE.Vector3(-1.5, 2.5, 0);
-
-                    var cornerVectors = [bl, br, tr, tl];
-
-                    // updating these every time in case browser window is resized
-                    var xCoeff = canvasEl.width / videoEl.videoWidth;
-                    var yCoeff = canvasEl.height / videoEl.videoHeight;
-
-                    var yOffset = parseInt(videoEl.style.marginTop, 10);
-
-                    var cornerRadius = 12;
-
-                    for (var i = 0; i < 4; i++) {
-                        var proj = toScreenPositionMesh(cornerVectors[i]);
-                        console.log(proj);
-                        var cornerElem = cornerArr[i];
-                        cornerElem.style.left = (proj.x * xCoeff - cornerRadius) + 'px';
-                        cornerElem.style.top = (proj.y * yCoeff + yOffset - cornerRadius) + 'px';
-                    }
-                }
-
+                // convert draw area corners to 2D canvas coordinates
                 function getCorners() {
-                    var bl = new THREE.Vector3(-1.5, -2.5, 0);
-                    var br = new THREE.Vector3(1.5, -2.5, 0);
-                    var tr = new THREE.Vector3(1.5, 2.5, 0);
-                    var tl = new THREE.Vector3(-1.5, 2.5, 0);
+                    // (x, z, -y)
+                    var bl = new THREE.Vector3(-0.5, 0, 4.5);
+                    var br = new THREE.Vector3(2.5, 0, 4.5);
+                    var tr = new THREE.Vector3(2.5, 0, -0.5);
+                    var tl = new THREE.Vector3(-0.5, 0, -0.5)
 
                     var cornerVectors = [tl, tr, br, bl];
                     var corners = [];
 
                     for (var i = 0; i < 4; i++) {
-                        var proj = toScreenPositionMesh(cornerVectors[i]);
-                        console.log("Hello", proj);
+                        var proj = toScreenPosition(cornerVectors[i]);
                         corners.push(proj.x);
                         corners.push(proj.y);
                     }
@@ -104,6 +51,25 @@
                     return corners;
                 }
 
+                // convert vector to world coordinates
+                function toScreenPosition(vec) {
+                    markerEl.object3D.localToWorld(vec);
+
+                    var widthHalf = 0.5 * videoEl.videoWidth;
+                    var heightHalf = 0.5 * videoEl.videoHeight;
+
+                    vec.project(cameraEl);
+
+                    vec.x = (vec.x * widthHalf) + widthHalf;
+                    vec.y = - (vec.y * heightHalf) + heightHalf;
+
+                    return {
+                        x: vec.x,
+                        y: vec.y
+                    };
+                };
+
+                // download image from URI
                 function downloadURI(uri, name) {
                     var link = document.createElement("a");
                     link.download = name;
@@ -114,72 +80,94 @@
                     delete link;
                 }
 
+                // perspective transform
                 function perspective() {
-                    // screenshot to URI
-                    var videoEl = document.querySelector('#arjs-video');
+
+                    const drawAreaWidth = 3;
+                    const drawAreaHeight = 5;
+
+                    //// screenshot to canvas
+
                     var canvasEl = document.createElement("canvas");
 
                     canvasEl.width = videoEl.videoWidth;
                     canvasEl.height = videoEl.videoHeight;
                     canvasEl.getContext('2d').drawImage(videoEl, 0, 0);
 
-                    // try to create a WebGL canvas (will fail if WebGL isn't supported)
+                    //// perspective transform of canvas
+
                     try {
-                        var canvas2 = fx.canvas();
+                        // try to create a WebGL canvas (will fail if WebGL isn't supported)
+                        var canvasGL = fx.canvas();
                     } catch (e) {
                         alert(e);
                         return;
                     }
 
-                    // convert the image to a texture
-                    var texture = canvas2.texture(canvasEl);
+                    // convert the canvas screenshot to texture
+                    var texture = canvasGL.texture(canvasEl);
 
+                    // make draw area the same height as the video (arbitrary)
                     var h = parseInt(videoEl.videoHeight);
-                    var w = h * 3 / 5;
+                    var w = h * drawAreaWidth / drawAreaHeight;
 
+                    // perspective transform
                     var srcPts = getCorners();
                     var destPts = [0, 0, w, 0, w, h, 0, h];
+                    canvasGL.draw(texture).perspective(srcPts, destPts).update();
 
-                    canvas2.draw(texture).perspective(srcPts, destPts).update();
+                    //// crop WebGL canvas
 
-                    var tempCanvas = document.createElement("canvas"),
-                        tCtx = tempCanvas.getContext("2d");
+                    // create temporary canvas (before converting back to WebGL)
+                    var croppedCanvas = document.createElement("canvas");
+                    var croppedContext = croppedCanvas.getContext("2d");
 
-                    tempCanvas.width = w;
-                    tempCanvas.height = h;
+                    croppedCanvas.width = w;
+                    croppedCanvas.height = h;
 
-                    tCtx.drawImage(canvas2, 0, 0);
-                    var canvas3 = fx.canvas();
-                    canvas3.draw(canvas3.texture(tempCanvas)).update();
-                    // canvas3.draw(canvas3.texture(tempCanvas)).edgeWork(10).update();
-                    downloadURI(canvas3.toDataURL("image/png"), "cropped");
+                    croppedContext.drawImage(canvasGL, 0, 0);
+
+                    // convert back to WebGL
+                    var croppedCanvasGL = fx.canvas();
+                    croppedCanvasGL.draw(croppedCanvasGL.texture(croppedCanvas)).update();
+
+                    // imageData = CannyJS.canny(canvas);
+                    // // overwrites the original canvas 
+                    // image.drawOn(mycanvas);
+
+                    // croppedCanvasGL.draw(croppedCanvasGL.texture(croppedCanvas)).denoise(20).update();
+                    downloadURI(croppedCanvasGL.toDataURL("image/png"), "cropped");
+                }
+
+                // animation
+                function animation() {
+                    anime({
+                        targets: "#my-box",
+                        keyframes: [
+                            { position: "1.5 0.5 0" },
+                            { position: "1.5 0.5 1.5" },
+                            { position: "0 0.5 1.5" },
+                            { position: "0 0.5 0" }
+                        ],
+                        easing: "linear",
+                        duration: 2000
+                    });
                 }
 
                 document
-                    .querySelector("#animate-button")
+                    .querySelector("#action-button")
                     .addEventListener("click", function () {
+
                         // animate
-                        anime({
-                            targets: "#my-box",
-                            keyframes: [
-                                { position: "1.5 0.5 0" },
-                                { position: "1.5 0.5 1.5" },
-                                { position: "0 0.5 1.5" },
-                                { position: "0 0.5 0" }
-                            ],
-                            // easing: "linear",
-                            duration: 2000
-                        });
+                        // animation();
 
-                        // applyTransform();
-
-                        renderCorners();
-
+                        // perspective transform
                         perspective();
                     });
             });
         };
     </script>
+
     <style>
         .buttons {
             position: absolute;
@@ -193,7 +181,7 @@
             z-index: 10;
         }
 
-        .animate-button {
+        .action-button {
             padding: 0.25em;
             border-radius: 4px;
             border: none;
@@ -202,66 +190,22 @@
             width: 6em;
             height: 4em;
         }
-
-        .corners {
-            position: absolute;
-            height: 24px;
-            width: 24px;
-            background-color: rgb(41, 207, 26);
-            border-radius: 50%;
-            display: inline-block;
-        }
     </style>
+
 </head>
 
 <body style='margin: 0px; overflow: hidden;'>
 
     <div class="buttons">
-        <button id="animate-button">Start Animation</button>
-        <button id="snap-img">SNAPSHOT</button>
-        <a href="#" id="download-link">DOWNLOAD</a>
+        <button id="action-button">Start Action</button>
     </div>
 
-    <!-- <a-scene id="my-scene" embedded arjs stats> -->
-    <!-- <a-scene id="my-scene" embedded arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"> -->
     <a-scene id="my-scene" embedded arjs>
         <a-marker preset="hiro">
-            <a-box id='my-box' position='0 0.5 0' material='opacity: 0.2;'></a-box>
-            <!-- <a-plane color="#CCC" height="5" width="3" position='1 0 2' rotation="-90 0 0"></a-plane> -->
+            <!-- <a-box id='my-box' position='0 0.5 0' material='opacity: 0.2;'></a-box> -->
         </a-marker>
         <a-entity camera></a-entity>
-        <a-camera-marker preset="hiro">
-            <a-box id='my-box' position='0 0.5 0' material='opacity: 0.2;'></a-box>
-        </a-camera-marker>
     </a-scene>
-
-    <!-- or could use onload callback to load this script after elements are created -->
-    <script src="my-scripts/screenshot.js"></script>
-
-    <script>
-        function toScreenPositionMesh(vec) {
-
-            planeMesh = document.querySelector("a-plane").object3DMap.mesh;
-            // planeMesh = document.querySelector("#my-box").object3DMap.mesh;
-            planeMesh.localToWorld(vec);
-
-            var cameraEl = document.querySelector('a-scene').camera;
-            var videoEl = document.querySelector('#arjs-video');
-
-            var widthHalf = 0.5 * videoEl.videoWidth;
-            var heightHalf = 0.5 * videoEl.videoHeight;
-
-            vec.project(cameraEl);
-
-            vec.x = (vec.x * widthHalf) + widthHalf;
-            vec.y = - (vec.y * heightHalf) + heightHalf;
-
-            return {
-                x: vec.x,
-                y: vec.y
-            };
-        };
-    </script>
 
 </body>
 
