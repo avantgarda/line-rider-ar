@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="online-scripts/glfx.js"></script>
+    <script>
+
+        function downloadURI(uri, name) {
+            var link = document.createElement("a");
+            link.download = name;
+            link.href = uri;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            delete link;
+        }
+
+        window.onload = function () {
+            // try to create a WebGL canvas (will fail if WebGL isn't supported)
+            try {
+                var canvas = fx.canvas();
+            } catch (e) {
+                alert(e);
+                return;
+            }
+
+            // convert the image to a texture
+            var image = document.getElementById('image');
+            var texture = canvas.texture(image);
+
+            var w = parseInt(image.width);
+            var h = parseInt(image.height);
+
+            var srcPts = [422, 76, 579, 41, 604, 173, 426, 195];
+            var destPts = [0, 0, w, 0, w, h, 0, h];
+
+            canvas.draw(texture).perspective(srcPts, destPts).update();
+
+            // replace the image with the canvas
+            image.parentNode.insertBefore(canvas, image);
+            image.parentNode.removeChild(image);
+
+            downloadURI(canvas.toDataURL('image/png'), 'testing');
+        };
+
+    </script>
+</head>
+
+<body>
+    <img id="image" src="res/Screenshot from 2021-05-19 21-49-26.png">
+</body>
+
+</html>
