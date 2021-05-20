@@ -52,40 +52,52 @@
 
       var width;
       var height;
-      var context2d;
+      var context2d = canvas.getContext("2d");
 
       video.onplay = function () {
         width = video.videoWidth;
         height = video.videoHeight;
-        context2d = canvas.getContext("2d");
         canvas.width = width;
         canvas.height = height;
-        updateImage();
+        setInterval(updateImage, 1000 / 24);
       }
 
       button.addEventListener("click", function () {
         updateImage();
       });
 
-      setInterval(updateImage, 1000/24);
+      const blur_radius = 2;
+      const low_threshold = 20;
+      const high_threshold = 50;
+      const rho = 1;
+      const theta = Math.PI / 180;
+      const hough_threshold = 150;
 
       function updateImage() {
         context2d.drawImage(video, 0, 0, width, height);
-        var image_data = context2d.getImageData(0, 0, width, height);
-        var gray_img = new jsfeat.matrix_t(width, height, jsfeat.U8_t | jsfeat.C1_t);
-        var code = jsfeat.COLOR_RGBA2GRAY;
-        jsfeat.imgproc.grayscale(image_data.data, width, height, gray_img, code);
+        var imageData = context2d.getImageData(0, 0, width, height);
+        var img_u8 = new jsfeat.matrix_t(width, height, jsfeat.U8_t | jsfeat.C1_t);
+
+        jsfeat.imgproc.grayscale(imageData.data, 640, 480, img_u8);
+
+        var kernel_size = (blur_radius + 1) << 1;
+
+        jsfeat.imgproc.gaussian_blur(img_u8, img_u8, kernel_size, 0);
+
+        jsfeat.imgproc.canny(img_u8, img_u8, low_threshold, high_threshold);
+
+        // console.log(jsfeat.imgproc.hough_transform(img_u8, rho, theta, hough_threshold));
 
         // render result back to canvas
-        var data_u32 = new Uint32Array(image_data.data.buffer);
+        var data_u32 = new Uint32Array(imageData.data.buffer);
         var alpha = (0xff << 24);
-        var i = gray_img.cols * gray_img.rows, pix = 0;
+        var i = img_u8.cols * img_u8.rows, pix = 0;
         while (--i >= 0) {
-          pix = gray_img.data[i];
+          pix = img_u8.data[i];
           data_u32[i] = alpha | (pix << 16) | (pix << 8) | pix;
         }
 
-        context2d.putImageData(image_data, 0, 0);
+        context2d.putImageData(imageData, 0, 0);
       }
     }
 

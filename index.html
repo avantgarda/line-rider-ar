@@ -17,9 +17,7 @@
     <!-- anime.js: import anime module separately, as AFRAME.ANIME doesn't seem to work well' -->
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
 
-    <script src="online-scripts/glfx.js"></script>
-
-    <script src="online-scripts/canny.min.js"></script>
+    <script src="online-scripts/jsfeat-min.js"></script>
 
     <script>
 
@@ -29,6 +27,14 @@
 
                 console.log("Scene loaded!");
 
+                // marker location relative to TOP LEFT of draw area (x, z, -y)
+                const markerCenterX = 0.5;
+                const markerCenterY = 0.5;
+                const markerCenterZ = 0.0;
+
+                const drawAreaW = 3;
+                const drawAreaH = 5;
+
                 const buttonEl = document.querySelector("#action-button");
                 const markerEl = document.querySelector("a-marker");
                 const cameraEl = document.querySelector('a-scene').camera;
@@ -37,18 +43,17 @@
                 // convert draw area corners to 2D canvas coordinates
                 function getCorners() {
                     // (x, z, -y)
-                    var bl = new THREE.Vector3(-0.5, 0, 4.5);
-                    var br = new THREE.Vector3(2.5, 0, 4.5);
-                    var tr = new THREE.Vector3(2.5, 0, -0.5);
-                    var tl = new THREE.Vector3(-0.5, 0, -0.5)
+                    var bl = new THREE.Vector3(0 - markerCenterX, markerCenterZ, drawAreaH - markerCenterY);
+                    var br = new THREE.Vector3(drawAreaW - markerCenterX, markerCenterZ, drawAreaH - markerCenterY);
+                    var tr = new THREE.Vector3(drawAreaW - markerCenterX, markerCenterZ, 0 - markerCenterY);
+                    var tl = new THREE.Vector3(0 - markerCenterX, markerCenterZ, 0 - markerCenterY)
 
                     var cornerVectors = [tl, tr, br, bl];
                     var corners = [];
 
                     for (var i = 0; i < 4; i++) {
                         var proj = toScreenPosition(cornerVectors[i]);
-                        corners.push(proj.x);
-                        corners.push(proj.y);
+                        corners.push([proj.x, proj.y]);
                     }
 
                     return corners;
@@ -86,54 +91,62 @@
                 // perspective transform
                 function perspective() {
 
-                    const drawAreaWidth = 3;
-                    const drawAreaHeight = 5;
-
                     //// screenshot to canvas
 
                     var canvasEl = document.createElement("canvas");
 
                     canvasEl.width = videoEl.videoWidth;
                     canvasEl.height = videoEl.videoHeight;
-                    canvasEl.getContext('2d').drawImage(videoEl, 0, 0);
+                    var context2d = canvasEl.getContext('2d');
+                    context2d.drawImage(videoEl, 0, 0);
 
-                    //// perspective transform of canvas
-
-                    try {
-                        // try to create a WebGL canvas (will fail if WebGL isn't supported)
-                        var canvasGL = fx.canvas();
-                    } catch (e) {
-                        alert(e);
-                        return;
-                    }
-
-                    // convert the canvas screenshot to texture
-                    var texture = canvasGL.texture(canvasEl);
+                    //// perspective transform of canvas with JSFeat
 
                     // make draw area the same height as the video (arbitrary)
                     var h = parseInt(videoEl.videoHeight);
-                    var w = h * drawAreaWidth / drawAreaHeight;
+                    var w = h * drawAreaW / drawAreaH;
+
+                    // get source and destinations parallelogram corners
+                    var srcPts = getCorners();
+                    var destPts = [[0, 0], [w, 0], [w, h], [0, h]];
+
+                    var warp_matrix = new jsfeat.matrix_t(3, 3, jsfeat.F32_t | jsfeat.C3_t);
+
+                    // calculate transform matrix
+                    jsfeat.math.perspective_4point_transform(warp_matrix,
+                        srcPts[0][0], srcPts[0][1], destPts[0][0], destPts[0][1],
+                        srcPts[1][0], srcPts[1][1], destPts[1][0], destPts[1][1],
+                        srcPts[2][0], srcPts[2][1], destPts[2][0], destPts[2][1],
+                        srcPts[3][0], srcPts[3][1], destPts[3][0], destPts[3][1]);
+
+                    jsfeat.matmath.invert_3x3(warp_matrix, warp_matrix);
+
+                    var imageData = context2d.getImageData(0, 0, canvasEl.width, canvasEl.height);
+                    var img_u8 = new jsfeat.matrix_t(canvasEl.width, canvasEl.height, jsfeat.U8_t | jsfeat.C1_t);
+                    var img_u8_warp = new jsfeat.matrix_t(w, h, jsfeat.U8_t | jsfeat.C1_t);
 
                     // perspective transform and other filters
-                    var srcPts = getCorners();
-                    var destPts = [0, 0, w, 0, w, h, 0, h];
-                    canvasGL.draw(texture).perspective(srcPts, destPts).denoise(20).update();
+                    jsfeat.imgproc.grayscale(imageData.data, canvasEl.width, canvasEl.height, img_u8);
+                    jsfeat.imgproc.warp_perspective(img_u8, img_u8_warp, warp_matrix, 0);
 
-                    //// crop WebGL canvas
+                    // change canvas dimensions to account for cropped transform
+                    canvasEl.width = w;
+                    canvasEl.height = h;
 
-                    // create new smaller canvas
-                    var croppedCanvas = document.createElement("canvas");
-                    var croppedContext = croppedCanvas.getContext("2d");
+                    imageData = context2d.getImageData(0, 0, w, h);
 
-                    croppedCanvas.width = w;
-                    croppedCanvas.height = h;
+                    // render result back to altered canvas
+                    var data_u32 = new Uint32Array(imageData.data.buffer);
+                    var alpha = (0xff << 24);
+                    var i = img_u8_warp.cols * img_u8_warp.rows, pix = 0;
+                    while (--i >= 0) {
+                        pix = img_u8_warp.data[i];
+                        data_u32[i] = alpha | (pix << 16) | (pix << 8) | pix;
+                    }
 
-                    croppedContext.drawImage(canvasGL, 0, 0);
+                    context2d.putImageData(imageData, 0, 0);
 
-                    window.canny = CannyJS.canny(croppedCanvas, 100, 50, 1.4, 3);
-                    canny.drawOn(croppedCanvas);
-
-                    downloadURI(croppedCanvas.toDataURL("image/png"), "cropped");
+                    downloadURI(canvasEl.toDataURL("image/png"), "cropped");
                 }
 
                 // animation
@@ -153,16 +166,16 @@
 
                 document.addEventListener("markerFound", function () {
                     buttonEl.style.pointerEvents = "auto";
-                    buttonEl.textContent="Start Action";
+                    buttonEl.textContent = "Start Action";
                 });
 
                 document.addEventListener("markerLost", function () {
                     buttonEl.style.pointerEvents = "none";
-                    buttonEl.textContent="Marker Not Found";
+                    buttonEl.textContent = "Marker Not Found";
                 });
 
                 buttonEl.addEventListener("click", function () {
-                    
+
                     // animate
                     // animation();
 
