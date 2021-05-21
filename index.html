@@ -7,6 +7,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Line Rider</title>
 
+    <!-- OpenCV.js: import script locally instead of pulling from internet (to avoid download limit) -->
+    <!-- <script src="online-scripts/opencv.js"></script> -->
+    <!-- <script src="https://docs.opencv.org/master/opencv.js"></script> -->
+
     <!-- A-Frame.js -->
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
 
@@ -34,6 +38,13 @@
 
                 const drawAreaW = 3;
                 const drawAreaH = 5;
+
+                const blur_radius = 2;
+                const low_threshold = 20;
+                const high_threshold = 50;
+                const rho = 1;
+                const theta = Math.PI / 180;
+                const hough_threshold = 150;
 
                 const buttonEl = document.querySelector("#action-button");
                 const markerEl = document.querySelector("a-marker");
@@ -125,9 +136,19 @@
                     var img_u8 = new jsfeat.matrix_t(canvasEl.width, canvasEl.height, jsfeat.U8_t | jsfeat.C1_t);
                     var img_u8_warp = new jsfeat.matrix_t(w, h, jsfeat.U8_t | jsfeat.C1_t);
 
-                    // perspective transform and other filters
+                    // convert to grayscale and perspective transform
                     jsfeat.imgproc.grayscale(imageData.data, canvasEl.width, canvasEl.height, img_u8);
                     jsfeat.imgproc.warp_perspective(img_u8, img_u8_warp, warp_matrix, 0);
+
+                    //// image processing
+
+                    var kernel_size = (blur_radius + 1) << 1;
+
+                    jsfeat.imgproc.gaussian_blur(img_u8_warp, img_u8_warp, kernel_size, 0);
+                    jsfeat.imgproc.canny(img_u8_warp, img_u8_warp, low_threshold, high_threshold);
+                    // console.log(jsfeat.imgproc.hough_transform(img_u8, rho, theta, hough_threshold));
+
+                    //// save altered image
 
                     // change canvas dimensions to account for cropped transform
                     canvasEl.width = w;
