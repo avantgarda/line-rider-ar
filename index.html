@@ -8,7 +8,7 @@
     <title>Line Rider</title>
 
     <!-- OpenCV.js: import script locally instead of pulling from internet (to avoid download limit) -->
-    <!-- <script src="online-scripts/opencv.js"></script> -->
+    <script src="online-scripts/opencv.js"></script>
     <!-- <script src="https://docs.opencv.org/master/opencv.js"></script> -->
 
     <script src="online-scripts/three.101.min.js"></script>
@@ -46,18 +46,6 @@
             scene.add(markerGroup);
 
             var source = new THREEAR.Source({ renderer, camera });
-
-            var geometry = new THREE.PlaneGeometry(3, 5, 1);
-            var material = new THREE.MeshNormalMaterial({
-                transparent: true,
-                opacity: 0.5,
-                side: THREE.DoubleSide
-            });
-            var cube = new THREE.Mesh(geometry, material);
-            cube.position.x = -0.5 + geometry.parameters.width / 2;
-            cube.position.z = -0.5 + geometry.parameters.height / 2;
-            cube.rotateX(Math.PI / 2);
-            markerGroup.add(cube);
 
             var patternMarker = new THREEAR.PatternMarker({
                 patternUrl: 'res/hiro.patt',
@@ -97,6 +85,7 @@
                 controller.addEventListener("markerFound", fnFound);
                 controller.addEventListener("markerLost", fnLost);
 
+                // notify that scene is ready
                 console.log("Scene loaded!");
 
                 // // marker location relative to TOP LEFT of draw area (x, z, -y)
@@ -115,7 +104,6 @@
                 const hough_threshold = 150;
 
                 var videoEl = document.querySelector('video');
-                var canvasEl = document.querySelector('canvas');
 
                 // convert draw area corners to 2D canvas coordinates
                 function getCorners() {
@@ -129,49 +117,17 @@
                     var corners = [];
 
                     for (var i = 0; i < 4; i++) {
-                        var proj = toScreenPosition(cornerVectors[i]);
-                        corners.push([proj.x, proj.y]);
+                        var proj = toVideoPosition(cornerVectors[i]);
+                        // corners.push([proj.x, proj.y]);
+                        corners.push(proj.x);
+                        corners.push(proj.y);
                     }
 
                     return corners;
                 }
 
-                var cornerArr = [];
-
-                for (var i = 0; i < 4; i++) {
-                    var cornerElem = document.createElement('div');
-                    cornerElem.className = "corners";
-                    document.body.appendChild(cornerElem);
-                    cornerArr.push(cornerElem);
-                }
-
-                function renderCorners() {
-                    var bl = new THREE.Vector3(0 - markerCenterX, markerCenterZ, drawAreaH - markerCenterY);
-                    var br = new THREE.Vector3(drawAreaW - markerCenterX, markerCenterZ, drawAreaH - markerCenterY);
-                    var tr = new THREE.Vector3(drawAreaW - markerCenterX, markerCenterZ, 0 - markerCenterY);
-                    var tl = new THREE.Vector3(0 - markerCenterX, markerCenterZ, 0 - markerCenterY)
-
-                    var cornerVectors = [bl, br, tr, tl];
-
-                    // updating these every time in case browser window is resized
-                    var xCoeff = parseInt(canvasEl.style.getPropertyValue("width")) / videoEl.videoWidth;
-                    var yCoeff = parseInt(canvasEl.style.getPropertyValue("height")) / videoEl.videoHeight;
-
-                    var yOffset = parseInt(canvasEl.style.marginTop);
-
-                    var cornerRadius = 12;
-
-                    for (var i = 0; i < 4; i++) {
-                        var proj = toScreenPosition(cornerVectors[i]);
-                        // console.log(proj);
-                        var cornerElem = cornerArr[i];
-                        cornerElem.style.left = (proj.x * xCoeff - cornerRadius) + 'px';
-                        cornerElem.style.top = (proj.y * yCoeff + yOffset - cornerRadius) + 'px';
-                    }
-                }
-
                 // convert vector to world coordinates
-                function toScreenPosition(vec) {
+                function toVideoPosition(vec) {
                     patternMarker.markerObject.localToWorld(vec);
 
                     var widthHalf = 0.5 * videoEl.videoWidth;
@@ -187,8 +143,6 @@
                         y: vec.y
                     };
                 };
-
-                setInterval(renderCorners, 1000 / 10);
 
                 // download image from URI
                 function downloadURI(uri, name) {
@@ -213,79 +167,62 @@
                     var context2d = canvasEl.getContext('2d');
                     context2d.drawImage(videoEl, 0, 0);
 
-                    //// perspective transform of canvas with JSFeat
+                    //// image processing OpenCV
 
+                    let src = cv.imread(canvasEl);
+                    let dst = new cv.Mat();
+
+                    // perspective transform
+                    
                     // make draw area the same height as the video (arbitrary)
                     var h = parseInt(videoEl.videoHeight);
                     var w = h * drawAreaW / drawAreaH;
 
                     // get source and destinations parallelogram corners
                     var srcPts = getCorners();
-                    var destPts = [[0, 0], [w, 0], [w, h], [0, h]];
+                    var destPts = [0, 0, w, 0, w, h, 0, h];
 
-                    var warp_matrix = new jsfeat.matrix_t(3, 3, jsfeat.F32_t | jsfeat.C3_t);
+                    let dsize = new cv.Size(w, h);
+                    let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, srcPts);
+                    let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, destPts);
+                    let M = cv.getPerspectiveTransform(srcTri, dstTri);
+                    cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
 
-                    // calculate transform matrix
-                    jsfeat.math.perspective_4point_transform(warp_matrix,
-                        srcPts[0][0], srcPts[0][1], destPts[0][0], destPts[0][1],
-                        srcPts[1][0], srcPts[1][1], destPts[1][0], destPts[1][1],
-                        srcPts[2][0], srcPts[2][1], destPts[2][0], destPts[2][1],
-                        srcPts[3][0], srcPts[3][1], destPts[3][0], destPts[3][1]);
+                    // grayscale
+                    cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY, 0);
 
-                    jsfeat.matmath.invert_3x3(warp_matrix, warp_matrix);
+                    // gaussian blur
+                    var kernel_size = (blur_radius << 1) + 1;
+                    let ksize = new cv.Size(kernel_size, kernel_size);
+                    cv.GaussianBlur(dst, dst, ksize, 0, 0, cv.BORDER_DEFAULT);
+                    
+                    // canny edge detection
+                    cv.Canny(dst, dst, low_threshold, high_threshold, 3, false);
 
-                    var imageData = context2d.getImageData(0, 0, canvasEl.width, canvasEl.height);
-                    var img_u8 = new jsfeat.matrix_t(canvasEl.width, canvasEl.height, jsfeat.U8_t | jsfeat.C1_t);
-                    var img_u8_warp = new jsfeat.matrix_t(w, h, jsfeat.U8_t | jsfeat.C1_t);
-
-                    // convert to grayscale and perspective transform
-                    jsfeat.imgproc.grayscale(imageData.data, canvasEl.width, canvasEl.height, img_u8);
-                    jsfeat.imgproc.warp_perspective(img_u8, img_u8_warp, warp_matrix, 0);
-
-                    //// image processing
-
-                    var kernel_size = (blur_radius + 1) << 1;
-
-                    jsfeat.imgproc.gaussian_blur(img_u8_warp, img_u8_warp, kernel_size, 0);
-                    jsfeat.imgproc.canny(img_u8_warp, img_u8_warp, low_threshold, high_threshold);
-                    // console.log(jsfeat.imgproc.hough_transform(img_u8, rho, theta, hough_threshold));
-
-                    //// save altered image
-
-                    // change canvas dimensions to account for cropped transform
-                    canvasEl.width = w;
-                    canvasEl.height = h;
-
-                    imageData = context2d.getImageData(0, 0, w, h);
-
-                    // render result back to altered canvas
-                    var data_u32 = new Uint32Array(imageData.data.buffer);
-                    var alpha = (0xff << 24);
-                    var i = img_u8_warp.cols * img_u8_warp.rows, pix = 0;
-                    while (--i >= 0) {
-                        pix = img_u8_warp.data[i];
-                        data_u32[i] = alpha | (pix << 16) | (pix << 8) | pix;
-                    }
-
-                    context2d.putImageData(imageData, 0, 0);
+                    // save processed image back to canvas
+                    cv.imshow(canvasEl, dst);
+                    
+                    // free memory
+                    src.delete(); dst.delete(); M.delete(); srcTri.delete(); dstTri.delete();
 
                     downloadURI(canvasEl.toDataURL("image/png"), "cropped");
                 }
 
-                // animation
-                function animation() {
-                    anime({
-                        targets: cube.position,
-                        keyframes: [
-                            { x: "1.5", y: "0.5", z: "0" },
-                            { x: "1.5", y: "0.5", z: "1.5" },
-                            { x: "0", y: "0.5", z: "1.5" },
-                            { x: "0", y: "0.5", z: "0" }
-                        ],
-                        easing: "linear",
-                        duration: 2000
-                    });
-                }
+                // // animation
+                // function animation() {
+                //     anime({
+                //         // (x, z, -y)
+                //         targets: cube.position,
+                //         keyframes: [
+                //             { x: "1.5", y: "0.5", z: "0" },
+                //             { x: "1.5", y: "0.5", z: "1.5" },
+                //             { x: "0", y: "0.5", z: "1.5" },
+                //             { x: "0", y: "0.5", z: "0" }
+                //         ],
+                //         easing: "linear",
+                //         duration: 2000
+                //     });
+                // }
 
                 buttonEl.addEventListener("click", function () {
 
@@ -321,15 +258,6 @@
             width: 6em;
             height: 4em;
         }
-
-        .corners {
-            position: absolute;
-            height: 24px;
-            width: 24px;
-            background-color: rgb(41, 207, 26);
-            border-radius: 50%;
-            display: inline-block;
-        }
     </style>
 
 </head>
@@ -339,8 +267,6 @@
     <div class="buttons">
         <button id="action-button" style="pointer-events: none">Marker Not Found</button>
     </div>
-
-    <!-- <a-box id='my-box' position='0 0.5 0' material='opacity: 0.2;'></a-box> -->
 
 </body>
 
