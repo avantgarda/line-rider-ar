@@ -11,12 +11,8 @@
     <!-- <script src="online-scripts/opencv.js"></script> -->
     <!-- <script src="https://docs.opencv.org/master/opencv.js"></script> -->
 
-    <!-- A-Frame.js -->
-    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-
-    <!-- AR.js: import script locally instead of pulling from internet to avoid download limit -->
-    <script src="online-scripts/aframe-ar.js"></script>
-    <!-- <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script> -->
+    <script src="online-scripts/three.101.min.js"></script>
+    <script src="online-scripts/THREEAR.js"></script>
 
     <!-- anime.js: import anime module separately, as AFRAME.ANIME doesn't seem to work well' -->
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
@@ -27,11 +23,83 @@
 
         window.onload = function () {
 
-            window.addEventListener('arjs-video-loaded', () => {
+            var buttonEl = document.querySelector("#action-button");
+
+            var renderer = new THREE.WebGLRenderer({
+                // antialias : true,
+                alpha: true
+            });
+            renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+            // renderer.setPixelRatio(2);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.domElement.style.position = 'absolute'
+            renderer.domElement.style.top = '0px'
+            renderer.domElement.style.left = '0px'
+            document.body.appendChild(renderer.domElement);
+
+            // init scene and camera
+            var scene = new THREE.Scene();
+            var camera = new THREE.Camera();
+            scene.add(camera);
+
+            var markerGroup = new THREE.Group();
+            scene.add(markerGroup);
+
+            var source = new THREEAR.Source({ renderer, camera });
+
+            var geometry = new THREE.PlaneGeometry(3, 5, 1);
+            var material = new THREE.MeshNormalMaterial({
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.DoubleSide
+            });
+            var cube = new THREE.Mesh(geometry, material);
+            cube.position.x = -0.5 + geometry.parameters.width / 2;
+            cube.position.z = -0.5 + geometry.parameters.height / 2;
+            cube.rotateX(Math.PI / 2);
+            markerGroup.add(cube);
+
+            var patternMarker = new THREEAR.PatternMarker({
+                patternUrl: 'res/hiro.patt',
+                markerObject: markerGroup
+            });
+
+            THREEAR.initialize({ source: source }).then((controller) => {
+
+                controller.trackMarker(patternMarker);
+
+                // run the rendering loop
+                var lastTimeMsec = 0;
+                requestAnimationFrame(function animate(nowMsec) {
+                    // keep looping
+                    requestAnimationFrame(animate);
+                    // measure time
+                    lastTimeMsec = lastTimeMsec || nowMsec - 1000 / 60;
+                    var deltaMsec = Math.min(200, nowMsec - lastTimeMsec);
+                    lastTimeMsec = nowMsec;
+                    // call each update function
+                    controller.update(source.domElement);
+                    renderer.render(scene, camera);
+                });
+
+                fnFound = () => {
+                    buttonEl.style.pointerEvents = "auto";
+                    buttonEl.textContent = "Start Action";
+                    controller.removeEventListener("markerFound", fnFound);
+                }
+
+                fnLost = () => {
+                    buttonEl.style.pointerEvents = "none";
+                    buttonEl.textContent = "Marker Not Found";
+                    controller.addEventListener("markerFound", fnFound);
+                }
+
+                controller.addEventListener("markerFound", fnFound);
+                controller.addEventListener("markerLost", fnLost);
 
                 console.log("Scene loaded!");
 
-                // marker location relative to TOP LEFT of draw area (x, z, -y)
+                // // marker location relative to TOP LEFT of draw area (x, z, -y)
                 const markerCenterX = 0.5;
                 const markerCenterY = 0.5;
                 const markerCenterZ = 0.0;
@@ -46,10 +114,8 @@
                 const theta = Math.PI / 180;
                 const hough_threshold = 150;
 
-                const buttonEl = document.querySelector("#action-button");
-                const markerEl = document.querySelector("a-marker");
-                const cameraEl = document.querySelector('a-scene').camera;
-                const videoEl = document.querySelector('#arjs-video');
+                var videoEl = document.querySelector('video');
+                var canvasEl = document.querySelector('canvas');
 
                 // convert draw area corners to 2D canvas coordinates
                 function getCorners() {
@@ -70,14 +136,48 @@
                     return corners;
                 }
 
+                var cornerArr = [];
+
+                for (var i = 0; i < 4; i++) {
+                    var cornerElem = document.createElement('div');
+                    cornerElem.className = "corners";
+                    document.body.appendChild(cornerElem);
+                    cornerArr.push(cornerElem);
+                }
+
+                function renderCorners() {
+                    var bl = new THREE.Vector3(0 - markerCenterX, markerCenterZ, drawAreaH - markerCenterY);
+                    var br = new THREE.Vector3(drawAreaW - markerCenterX, markerCenterZ, drawAreaH - markerCenterY);
+                    var tr = new THREE.Vector3(drawAreaW - markerCenterX, markerCenterZ, 0 - markerCenterY);
+                    var tl = new THREE.Vector3(0 - markerCenterX, markerCenterZ, 0 - markerCenterY)
+
+                    var cornerVectors = [bl, br, tr, tl];
+
+                    // updating these every time in case browser window is resized
+                    var xCoeff = parseInt(canvasEl.style.getPropertyValue("width")) / videoEl.videoWidth;
+                    var yCoeff = parseInt(canvasEl.style.getPropertyValue("height")) / videoEl.videoHeight;
+
+                    var yOffset = parseInt(canvasEl.style.marginTop);
+
+                    var cornerRadius = 12;
+
+                    for (var i = 0; i < 4; i++) {
+                        var proj = toScreenPosition(cornerVectors[i]);
+                        // console.log(proj);
+                        var cornerElem = cornerArr[i];
+                        cornerElem.style.left = (proj.x * xCoeff - cornerRadius) + 'px';
+                        cornerElem.style.top = (proj.y * yCoeff + yOffset - cornerRadius) + 'px';
+                    }
+                }
+
                 // convert vector to world coordinates
                 function toScreenPosition(vec) {
-                    markerEl.object3D.localToWorld(vec);
+                    patternMarker.markerObject.localToWorld(vec);
 
                     var widthHalf = 0.5 * videoEl.videoWidth;
                     var heightHalf = 0.5 * videoEl.videoHeight;
 
-                    vec.project(cameraEl);
+                    vec.project(camera);
 
                     vec.x = (vec.x * widthHalf) + widthHalf;
                     vec.y = - (vec.y * heightHalf) + heightHalf;
@@ -87,6 +187,8 @@
                         y: vec.y
                     };
                 };
+
+                setInterval(renderCorners, 1000 / 10);
 
                 // download image from URI
                 function downloadURI(uri, name) {
@@ -173,27 +275,17 @@
                 // animation
                 function animation() {
                     anime({
-                        targets: "#my-box",
+                        targets: cube.position,
                         keyframes: [
-                            { position: "1.5 0.5 0" },
-                            { position: "1.5 0.5 1.5" },
-                            { position: "0 0.5 1.5" },
-                            { position: "0 0.5 0" }
+                            { x: "1.5", y: "0.5", z: "0" },
+                            { x: "1.5", y: "0.5", z: "1.5" },
+                            { x: "0", y: "0.5", z: "1.5" },
+                            { x: "0", y: "0.5", z: "0" }
                         ],
                         easing: "linear",
                         duration: 2000
                     });
                 }
-
-                document.addEventListener("markerFound", function () {
-                    buttonEl.style.pointerEvents = "auto";
-                    buttonEl.textContent = "Start Action";
-                });
-
-                document.addEventListener("markerLost", function () {
-                    buttonEl.style.pointerEvents = "none";
-                    buttonEl.textContent = "Marker Not Found";
-                });
 
                 buttonEl.addEventListener("click", function () {
 
@@ -229,6 +321,15 @@
             width: 6em;
             height: 4em;
         }
+
+        .corners {
+            position: absolute;
+            height: 24px;
+            width: 24px;
+            background-color: rgb(41, 207, 26);
+            border-radius: 50%;
+            display: inline-block;
+        }
     </style>
 
 </head>
@@ -239,12 +340,7 @@
         <button id="action-button" style="pointer-events: none">Marker Not Found</button>
     </div>
 
-    <a-scene id="my-scene" embedded arjs>
-        <a-marker preset="hiro">
-            <!-- <a-box id='my-box' position='0 0.5 0' material='opacity: 0.2;'></a-box> -->
-        </a-marker>
-        <a-entity camera></a-entity>
-    </a-scene>
+    <!-- <a-box id='my-box' position='0 0.5 0' material='opacity: 0.2;'></a-box> -->
 
 </body>
 
