@@ -11,6 +11,8 @@ class ImageProcessing {
         this.dilateIters = processingParams.dilateIters;
         this.erodeIters = processingParams.erodeIters;
 
+        this.polygonEpsilon = processingParams.polygonEpsilon;
+
         // page setup parameters
         this.markerCenterX = pageSetupParams.markerCenterX;
         this.markerCenterY = pageSetupParams.markerCenterY;
@@ -128,7 +130,7 @@ class ImageProcessing {
             let tmp = new cv.Mat();
             let cnt = contours.get(i);
             // get approximate polygon for current contour
-            cv.approxPolyDP(cnt, tmp, 1, true);
+            cv.approxPolyDP(cnt, tmp, this.polygonEpsilon, true);
             // add to polygon (contour) array
             poly.push_back(tmp);
             cnt.delete(); tmp.delete();
