@@ -6,6 +6,11 @@ class ImageProcessing {
         this.canny_low_threshold = processingParams.canny_low_threshold;
         this.canny_high_threshold = processingParams.canny_high_threshold;
 
+        this.dilateKernel = processingParams.dilateKernel;
+        this.erodeKernel = processingParams.erodeKernel;
+        this.dilateIters = processingParams.dilateIters;
+        this.erodeIters = processingParams.erodeIters;
+
         // page setup parameters
         this.markerCenterX = pageSetupParams.markerCenterX;
         this.markerCenterY = pageSetupParams.markerCenterY;
@@ -85,12 +90,13 @@ class ImageProcessing {
         cv.Canny(dst, dst, this.canny_low_threshold, this.canny_high_threshold, 3, false);
 
         // dilate and erode
-        let N = cv.Mat.ones(5, 5, cv.CV_8U);
+        let dilateK = cv.Mat.ones(this.dilateKernel, this.dilateKernel, cv.CV_8U);
+        let erodeK = cv.Mat.ones(this.erodeKernel, this.erodeKernel, cv.CV_8U);
         let anchor = new cv.Point(-1, -1);
         // maybe change M or anchor paramter for each
-        cv.dilate(dst, dst, N, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
-        cv.erode(dst, dst, N, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
-        N.delete();
+        cv.dilate(dst, dst, dilateK, anchor, this.dilateIters, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+        cv.erode(dst, dst, erodeK, anchor, this.erodeIters, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+        dilateK.delete(); erodeK.delete();
 
         // mask out marker and border lines
         let numCells = 1 + Math.floor(dst.rows * (this.markerSide + this.markerCenterX) / this.drawAreaH);
@@ -111,26 +117,64 @@ class ImageProcessing {
             }
         }
 
-        // find contours
-        let contours = new cv.MatVector();
-        let hierarchy = new cv.Mat();
-        // You can try more different parameters
-        cv.findContours(dst, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
-        // draw contours with random Scalar
-        // let cnt = contours.get(0);
-        for (let i = 0; i < contours.size(); ++i) {
-            // console.log(cnt.data32S[i]);
-            // console.log(contours.get(i));
-            let color = new cv.Scalar(Math.round(Math.random() * 255), Math.round(Math.random() * 255),
-                Math.round(Math.random() * 255));
-            cv.drawContours(dst, contours, i, color, 1, cv.LINE_8, hierarchy, 100);
-        }
-        contours.delete(); hierarchy.delete();
+        // // find contours
+        // let contours = new cv.MatVector();
+        // let hierarchy = new cv.Mat();
+        // let poly = new cv.MatVector();
+        // // You can try more different parameters
+        // cv.findContours(dst, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+        // // draw contours with random Scalar
+        // // let cnt = contours.get(0);
+        // for (let i = 0; i < contours.size(); ++i) {
+        //     let tmp = new cv.Mat();
+        //     let cnt = contours.get(i);
+        //     cv.approxPolyDP(cnt, tmp, 3, false);
+        //     poly.push_back(tmp);
+        //     // console.log(cnt.data32S[i]);
+        //     // console.log(contours.get(i));
+        //     // let color = new cv.Scalar(Math.round(Math.random() * 255), Math.round(Math.random() * 255),
+        //     //     Math.round(Math.random() * 255));
+        //     // cv.drawContours(dst, contours, i, color, 1, cv.LINE_8, hierarchy, 100);
+        // }
 
-        // save processed image back to hidden canvas
-        this.canvas.width = w;
-        this.canvas.height = h;
-        cv.imshow(this.canvas, dst);
+        // function plotPoints(canvas, points) {
+        //     const ctx = canvas.getContext('2d')
+        //     ctx.strokeStyle = 'green'
+
+        //     Object.values(points).forEach(ps => {
+        //         ctx.beginPath()
+        //         ctx.moveTo(ps[0].x, ps[1].y)
+        //         ctx.arc(ps[0].x, ps[1].y, 2, 0, 2 * Math.PI)
+        //         ps.slice(1).forEach(({ x, y }) => {
+        //             ctx.lineTo(x, y)
+        //             ctx.arc(x, y, 2, 0, 2 * Math.PI)
+        //         })
+        //         ctx.closePath()
+        //         ctx.stroke()
+        //     })
+        // }
+
+        // const points = {}
+        // for (let i = 0; i < contours.size(); ++i) {
+        //     const ci = contours.get(i)
+        //     points[i] = []
+        //     for (let j = 0; j < ci.data32S.length; j += 2) {
+        //         let p = {}
+        //         p.x = ci.data32S[j]
+        //         p.y = ci.data32S[j + 1]
+        //         points[i].push(p)
+        //     }
+        // }
+        // this.liveCanvas.width = w;
+        // this.liveCanvas.height = h;
+        // plotPoints(this.liveCanvas, points)
+
+        // contours.delete(); hierarchy.delete(); poly.delete();
+
+        // // save processed image back to hidden canvas
+        // this.canvas.width = w;
+        // this.canvas.height = h;
+        // cv.imshow(this.canvas, dst);
 
         // show processing on visible canvas
         this.liveCanvas.width = w;

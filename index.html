@@ -34,8 +34,14 @@
         };
 
         const processingParams = {
+            // canny edge detection
             canny_low_threshold: 20,
-            canny_high_threshold: 50
+            canny_high_threshold: 50,
+            // dilation and erosion
+            dilateKernel: 5,
+            erodeKernel: 7, // 3
+            dilateIters: 1,
+            erodeIters: 1 // 3
         };
 
         // boolean flag for loading of OpenCV
@@ -102,7 +108,7 @@
                         else { console.log("Marker not found") }
                     }
 
-                    setInterval(processPage, 1000 / 2);
+                    // setInterval(processPage, 1000 / 2);
 
                     //     // // animation
                     //     // function animation() {
