@@ -117,59 +117,48 @@ class ImageProcessing {
             }
         }
 
-        // // find contours
-        // let contours = new cv.MatVector();
-        // let hierarchy = new cv.Mat();
-        // let poly = new cv.MatVector();
-        // // You can try more different parameters
-        // cv.findContours(dst, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
-        // // draw contours with random Scalar
-        // // let cnt = contours.get(0);
-        // for (let i = 0; i < contours.size(); ++i) {
-        //     let tmp = new cv.Mat();
-        //     let cnt = contours.get(i);
-        //     cv.approxPolyDP(cnt, tmp, 3, false);
-        //     poly.push_back(tmp);
-        //     // console.log(cnt.data32S[i]);
-        //     // console.log(contours.get(i));
-        //     // let color = new cv.Scalar(Math.round(Math.random() * 255), Math.round(Math.random() * 255),
-        //     //     Math.round(Math.random() * 255));
-        //     // cv.drawContours(dst, contours, i, color, 1, cv.LINE_8, hierarchy, 100);
-        // }
+        // find contours and approximate polygons
+        let contours = new cv.MatVector();
+        let hierarchy = new cv.Mat();
+        let poly = new cv.MatVector();
+        // find contours
+        cv.findContours(dst, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        // calculate approximate polygons
+        for (let i = 0; i < contours.size(); ++i) {
+            let tmp = new cv.Mat();
+            let cnt = contours.get(i);
+            // get approximate polygon for current contour
+            cv.approxPolyDP(cnt, tmp, 1, true);
+            // add to polygon (contour) array
+            poly.push_back(tmp);
+            cnt.delete(); tmp.delete();
+        }
 
-        // function plotPoints(canvas, points) {
-        //     const ctx = canvas.getContext('2d')
-        //     ctx.strokeStyle = 'green'
+        let dstPoly = new cv.Mat(dst.rows, dst.cols, cv.CV_8U);
+        // draw polygon approximations with random Scalar
+        for (let i = 0; i < contours.size(); ++i) {
+            // draw normal contours
+            let color = new cv.Scalar(Math.round(Math.random() * 255), Math.round(Math.random() * 255),
+                Math.round(Math.random() * 255));
+            // let color = new cv.Scalar(255, 255, 255);
+            cv.drawContours(dstPoly, poly, i, color, 1, cv.LINE_8, hierarchy, 100);
+        }
 
-        //     Object.values(points).forEach(ps => {
-        //         ctx.beginPath()
-        //         ctx.moveTo(ps[0].x, ps[1].y)
-        //         ctx.arc(ps[0].x, ps[1].y, 2, 0, 2 * Math.PI)
-        //         ps.slice(1).forEach(({ x, y }) => {
-        //             ctx.lineTo(x, y)
-        //             ctx.arc(x, y, 2, 0, 2 * Math.PI)
-        //         })
-        //         ctx.closePath()
-        //         ctx.stroke()
-        //     })
-        // }
+        const points = {}
+        for (let i = 0; i < poly.size(); ++i) {
+            const ci = poly.get(i)
+            points[i] = []
+            for (let j = 0; j < ci.data32S.length; j += 2) {
+                let p = {}
+                p.x = ci.data32S[j]
+                p.y = ci.data32S[j + 1]
+                points[i].push(p)
+            }
+        }
 
-        // const points = {}
-        // for (let i = 0; i < contours.size(); ++i) {
-        //     const ci = contours.get(i)
-        //     points[i] = []
-        //     for (let j = 0; j < ci.data32S.length; j += 2) {
-        //         let p = {}
-        //         p.x = ci.data32S[j]
-        //         p.y = ci.data32S[j + 1]
-        //         points[i].push(p)
-        //     }
-        // }
-        // this.liveCanvas.width = w;
-        // this.liveCanvas.height = h;
-        // plotPoints(this.liveCanvas, points)
+        console.log(points);
 
-        // contours.delete(); hierarchy.delete(); poly.delete();
+        contours.delete(); hierarchy.delete(); poly.delete();
 
         // // save processed image back to hidden canvas
         // this.canvas.width = w;
@@ -179,12 +168,12 @@ class ImageProcessing {
         // show processing on visible canvas
         this.liveCanvas.width = w;
         this.liveCanvas.height = h;
-        cv.imshow(this.liveCanvas, dst);
+        cv.imshow(this.liveCanvas, dstPoly);
 
         // free remaining memory
-        dst.delete();
+        dst.delete(); dstPoly.delete();
 
-        // this.downloadURI(this.canvas.toDataURL("image/png"), "cropped");
+        this.downloadURI(this.liveCanvas.toDataURL("image/png"), "cropped");
     }
 
 }
