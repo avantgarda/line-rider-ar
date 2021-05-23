@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Line Rider</title>
+    <title>Line Rider in Augmented Reality</title>
+    <link rel="shortcut icon" type="image/png" href="res/LineRiderCharacter-Rotated.png" />
 
     <!-- OpenCV.js: import script locally instead of pulling from internet (to avoid download limit) -->
     <script src="online-scripts/opencv.js"></script>
@@ -87,202 +88,203 @@
                 // notify that scene is ready
                 console.log("Scene loaded!");
 
-                cv['onRuntimeInitialized'] = () => {
+                // cv['onRuntimeInitialized'] = () => {
 
-                    // notify that OpenCV is ready
-                    console.log("OpenCV loaded!");
+                // notify that OpenCV is ready
+                console.log("OpenCV loaded!");
 
-                    // // marker location relative to TOP LEFT of draw area (x, z, -y)
-                    const markerCenterX = 0.5;
-                    const markerCenterY = 0.5;
-                    const markerCenterZ = 0.0;
-                    const markerSide = 1;
+                // // marker location relative to TOP LEFT of draw area (x, z, -y)
+                const markerCenterX = 0.5;
+                const markerCenterY = 0.5;
+                const markerCenterZ = 0.0;
+                const markerSide = 1;
 
-                    const drawAreaW = 3;
-                    const drawAreaH = 5;
+                const drawAreaW = 3;
+                const drawAreaH = 5;
 
-                    // margin (% of marker side) around draw area to ignore
-                    const drawAreaBorderPercent = 10;
+                // margin (% of marker side) around draw area to ignore
+                const drawAreaBorderPercent = 10;
 
-                    const blur_radius = 2;
-                    const low_threshold = 20;
-                    const high_threshold = 50;
+                const blur_radius = 2;
+                const low_threshold = 20;
+                const high_threshold = 50;
 
-                    var videoEl = document.querySelector('video');
+                var videoEl = document.querySelector('video');
 
-                    // prepare canvas for live streaming of image processing
-                    var processingCanvas = document.querySelector('#processing-canvas');
-                    var showProccesing = true;
+                // hidden canvas elements for image processing
+                var canvasEl = document.createElement("canvas");
+                var context2d = canvasEl.getContext('2d');
+                canvasEl.width = videoEl.videoWidth;
+                canvasEl.height = videoEl.videoHeight;
 
-                    // convert draw area corners to 2D canvas coordinates
-                    function getCorners() {
-                        // (x, z, -y)
-                        var bl = new THREE.Vector3(0 - markerCenterX, markerCenterZ, drawAreaH - markerCenterY);
-                        var br = new THREE.Vector3(drawAreaW - markerCenterX, markerCenterZ, drawAreaH - markerCenterY);
-                        var tr = new THREE.Vector3(drawAreaW - markerCenterX, markerCenterZ, 0 - markerCenterY);
-                        var tl = new THREE.Vector3(0 - markerCenterX, markerCenterZ, 0 - markerCenterY)
+                // make draw area the same height as the video (arbitrary)
+                var h = parseInt(videoEl.videoHeight);
+                var w = h * drawAreaW / drawAreaH;
 
-                        var cornerVectors = [tl, tr, br, bl];
-                        var corners = [];
+                // prepare canvas for live streaming of image processing
+                var processingCanvas = document.querySelector('#processing-canvas');
+                var showProccesing = true;
+                // processingCanvas.width = w;
+                // processingCanvas.height = h;
 
-                        for (var i = 0; i < 4; i++) {
-                            var proj = toVideoPosition(cornerVectors[i]);
-                            // corners.push([proj.x, proj.y]);
-                            corners.push(proj.x);
-                            corners.push(proj.y);
-                        }
+                // convert draw area corners to 2D canvas coordinates
+                function getCorners() {
+                    // (x, z, -y)
+                    var bl = new THREE.Vector3(0 - markerCenterX, markerCenterZ, drawAreaH - markerCenterY);
+                    var br = new THREE.Vector3(drawAreaW - markerCenterX, markerCenterZ, drawAreaH - markerCenterY);
+                    var tr = new THREE.Vector3(drawAreaW - markerCenterX, markerCenterZ, 0 - markerCenterY);
+                    var tl = new THREE.Vector3(0 - markerCenterX, markerCenterZ, 0 - markerCenterY)
 
-                        return corners;
+                    var cornerVectors = [tl, tr, br, bl];
+                    var corners = [];
+
+                    for (var i = 0; i < 4; i++) {
+                        var proj = toVideoPosition(cornerVectors[i]);
+                        // corners.push([proj.x, proj.y]);
+                        corners.push(proj.x);
+                        corners.push(proj.y);
                     }
 
-                    // convert vector to world coordinates
-                    function toVideoPosition(vec) {
-                        patternMarker.markerObject.localToWorld(vec);
+                    return corners;
+                }
 
-                        var widthHalf = 0.5 * videoEl.videoWidth;
-                        var heightHalf = 0.5 * videoEl.videoHeight;
+                // convert vector to world coordinates
+                function toVideoPosition(vec) {
+                    patternMarker.markerObject.localToWorld(vec);
 
-                        vec.project(camera);
+                    var widthHalf = 0.5 * videoEl.videoWidth;
+                    var heightHalf = 0.5 * videoEl.videoHeight;
 
-                        vec.x = (vec.x * widthHalf) + widthHalf;
-                        vec.y = - (vec.y * heightHalf) + heightHalf;
+                    vec.project(camera);
 
-                        return {
-                            x: vec.x,
-                            y: vec.y
-                        };
+                    vec.x = (vec.x * widthHalf) + widthHalf;
+                    vec.y = - (vec.y * heightHalf) + heightHalf;
+
+                    return {
+                        x: vec.x,
+                        y: vec.y
                     };
+                };
 
-                    // download image from URI
-                    function downloadURI(uri, name) {
-                        var link = document.createElement("a");
-                        link.download = name;
-                        link.href = uri;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        delete link;
+                // download image from URI
+                function downloadURI(uri, name) {
+                    var link = document.createElement("a");
+                    link.download = name;
+                    link.href = uri;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    delete link;
+                }
+
+                // image processing
+                function imageProcessing() {
+
+                    //// get latest video frame
+
+                    context2d.drawImage(videoEl, 0, 0);
+
+                    //// image processing OpenCV
+
+                    let src = cv.imread(canvasEl);
+                    let dst = new cv.Mat();
+
+                    // perspective transform
+
+                    // get source and destinations parallelogram corners
+                    var srcPts = getCorners();
+                    var destPts = [0, 0, w, 0, w, h, 0, h];
+
+                    let dsize = new cv.Size(w, h);
+                    let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, srcPts);
+                    let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, destPts);
+                    let M = cv.getPerspectiveTransform(srcTri, dstTri);
+                    cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+
+                    // grayscale
+                    cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY, 0);
+
+                    // canny edge detection
+                    cv.Canny(dst, dst, low_threshold, high_threshold, 3, false);
+
+                    // dilate and erode
+                    let N = cv.Mat.ones(5, 5, cv.CV_8U);
+                    let anchor = new cv.Point(-1, -1);
+                    // maybe change M or anchor paramter for each
+                    cv.dilate(dst, dst, M, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+                    cv.erode(dst, dst, M, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+
+                    // mask out marker and border lines
+                    numCells = 1 + Math.floor(dst.rows * (markerSide + markerCenterX) / drawAreaH);
+                    border = 1 + Math.floor(numCells * drawAreaBorderPercent / 100);
+                    numCells += border;
+                    // marker
+                    for (let i = 0; i < numCells; i++) {
+                        for (let j = 0; j < numCells; j++) {
+                            dst.ucharPtr(i, j)[0] = 0;
+                        }
                     }
-
-                    // image processing
-                    function imageProcessing() {
-
-                        //// screenshot to canvas
-
-                        var canvasEl = document.createElement("canvas");
-
-                        canvasEl.width = videoEl.videoWidth;
-                        canvasEl.height = videoEl.videoHeight;
-                        var context2d = canvasEl.getContext('2d');
-                        context2d.drawImage(videoEl, 0, 0);
-
-                        //// image processing OpenCV
-
-                        let src = cv.imread(canvasEl);
-                        let dst = new cv.Mat();
-
-                        // perspective transform
-
-                        // make draw area the same height as the video (arbitrary)
-                        var h = parseInt(videoEl.videoHeight);
-                        var w = h * drawAreaW / drawAreaH;
-
-                        // get source and destinations parallelogram corners
-                        var srcPts = getCorners();
-                        var destPts = [0, 0, w, 0, w, h, 0, h];
-
-                        let dsize = new cv.Size(w, h);
-                        let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, srcPts);
-                        let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, destPts);
-                        let M = cv.getPerspectiveTransform(srcTri, dstTri);
-                        cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-
-                        // grayscale
-                        cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY, 0);
-
-                        // canny edge detection
-                        cv.Canny(dst, dst, low_threshold, high_threshold, 3, false);
-
-                        // dilate and erode
-                        let N = cv.Mat.ones(5, 5, cv.CV_8U);
-                        let anchor = new cv.Point(-1, -1);
-                        // maybe change M or anchor paramter for each
-                        cv.dilate(dst, dst, M, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
-                        cv.erode(dst, dst, M, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
-
-                        // mask out marker and border lines
-                        numCells = 1 + Math.floor(dst.rows * (markerSide + markerCenterX) / drawAreaH);
-                        border = 1 + Math.floor(numCells * drawAreaBorderPercent / 100);
-                        numCells += border;
-                        // marker
-                        for (let i = 0; i < numCells; i++) {
-                            for (let j = 0; j < numCells; j++) {
+                    // border
+                    for (let i = 0; i < dst.rows; i++) {
+                        for (let j = 0; j < dst.cols; j++) {
+                            if ((i < border) || (i > (dst.rows - border)) || (j < border) || (j > (dst.cols - border))) {
                                 dst.ucharPtr(i, j)[0] = 0;
                             }
                         }
-                        // border
-                        for (let i = 0; i < dst.rows; i++) {
-                            for (let j = 0; j < dst.cols; j++) {
-                                if ((i < border) || (i > (dst.rows - border)) || (j < border) || (j > (dst.cols - border))) {
-                                    dst.ucharPtr(i, j)[0] = 0;
-                                }
-                            }
-                        }
-
-                        // find contours
-                        let contours = new cv.MatVector();
-                        let hierarchy = new cv.Mat();
-                        // You can try more different parameters
-                        cv.findContours(dst, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
-                        // draw contours with random Scalar
-                        for (let i = 0; i < contours.size(); ++i) {
-                            let color = new cv.Scalar(Math.round(Math.random() * 255), Math.round(Math.random() * 255),
-                                Math.round(Math.random() * 255));
-                            cv.drawContours(dst, contours, i, color, 1, cv.LINE_8, hierarchy, 100);
-                        }
-                        contours.delete(); hierarchy.delete();
-
-                        // save processed image back to canvas
-                        cv.imshow(canvasEl, dst);
-
-                        // show processing on canvas
-                        processingCanvas.width = w;
-                        processingCanvas.height = h;
-                        cv.imshow(processingCanvas, dst);
-
-                        // free memory
-                        src.delete(); dst.delete(); M.delete(); N.delete(); srcTri.delete(); dstTri.delete();
-
-                        // downloadURI(canvasEl.toDataURL("image/png"), "cropped");
                     }
 
-                    // setInterval(imageProcessing, 1000 / 2);
+                    // find contours
+                    let contours = new cv.MatVector();
+                    let hierarchy = new cv.Mat();
+                    // You can try more different parameters
+                    cv.findContours(dst, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+                    // draw contours with random Scalar
+                    for (let i = 0; i < contours.size(); ++i) {
+                        let color = new cv.Scalar(Math.round(Math.random() * 255), Math.round(Math.random() * 255),
+                            Math.round(Math.random() * 255));
+                        cv.drawContours(dst, contours, i, color, 1, cv.LINE_8, hierarchy, 100);
+                    }
+                    contours.delete(); hierarchy.delete();
 
-                    // // animation
-                    // function animation() {
-                    //     anime({
-                    //         // (x, z, -y)
-                    //         targets: cube.position,
-                    //         keyframes: [
-                    //             { x: "1.5", y: "0.5", z: "0" },
-                    //             { x: "1.5", y: "0.5", z: "1.5" },
-                    //             { x: "0", y: "0.5", z: "1.5" },
-                    //             { x: "0", y: "0.5", z: "0" }
-                    //         ],
-                    //         easing: "linear",
-                    //         duration: 2000
-                    //     });
-                    // }
+                    // save processed image back to hidden canvas
+                    cv.imshow(canvasEl, dst);
 
-                    buttonEl.addEventListener("click", function () {
+                    // show processing on visible canvas
+                    // cv.imshow(processingCanvas, dst);
 
-                        // animate
-                        // animation();
+                    // free memory
+                    src.delete(); dst.delete(); M.delete(); N.delete(); srcTri.delete(); dstTri.delete();
 
-                        // image processing
-                        imageProcessing();
-                    });
+                    downloadURI(canvasEl.toDataURL("image/png"), "cropped");
                 }
+
+                // setInterval(imageProcessing, 1000 / 2);
+
+                // // animation
+                // function animation() {
+                //     anime({
+                //         // (x, z, -y)
+                //         targets: cube.position,
+                //         keyframes: [
+                //             { x: "1.5", y: "0.5", z: "0" },
+                //             { x: "1.5", y: "0.5", z: "1.5" },
+                //             { x: "0", y: "0.5", z: "1.5" },
+                //             { x: "0", y: "0.5", z: "0" }
+                //         ],
+                //         easing: "linear",
+                //         duration: 2000
+                //     });
+                // }
+
+                buttonEl.addEventListener("click", function () {
+
+                    // animate
+                    // animation();
+
+                    // image processing
+                    imageProcessing();
+                });
+                // }
             });
         };
     </script>
@@ -319,7 +321,7 @@
         <button id="action-button" style="pointer-events: none">Marker Not Found</button>
     </div>
 
-    <canvas id="processing-canvas" position="absolute" z-index="10"></canvas>
+    <canvas id="processing-canvas" position="absolute" z-index="10" style="background-color: gray"></canvas>
 
 </body>
 
