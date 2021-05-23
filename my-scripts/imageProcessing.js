@@ -117,7 +117,10 @@ class ImageProcessing {
         // You can try more different parameters
         cv.findContours(dst, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
         // draw contours with random Scalar
+        // let cnt = contours.get(0);
         for (let i = 0; i < contours.size(); ++i) {
+            // console.log(cnt.data32S[i]);
+            // console.log(contours.get(i));
             let color = new cv.Scalar(Math.round(Math.random() * 255), Math.round(Math.random() * 255),
                 Math.round(Math.random() * 255));
             cv.drawContours(dst, contours, i, color, 1, cv.LINE_8, hierarchy, 100);
@@ -125,6 +128,8 @@ class ImageProcessing {
         contours.delete(); hierarchy.delete();
 
         // save processed image back to hidden canvas
+        this.canvas.width = w;
+        this.canvas.height = h;
         cv.imshow(this.canvas, dst);
 
         // show processing on visible canvas

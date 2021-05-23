@@ -19,7 +19,7 @@ class Corners {
         let bl = new THREE.Vector3(0 - this.markerCenterX, this.markerCenterZ, this.drawAreaH - this.markerCenterY);
         let br = new THREE.Vector3(this.drawAreaW - this.markerCenterX, this.markerCenterZ, this.drawAreaH - this.markerCenterY);
         let tr = new THREE.Vector3(this.drawAreaW - this.markerCenterX, this.markerCenterZ, 0 - this.markerCenterY);
-        let tl = new THREE.Vector3(0 - this.markerCenterX, this.markerCenterZ, 0 - this.markerCenterY)
+        let tl = new THREE.Vector3(0 - this.markerCenterX, this.markerCenterZ, 0 - this.markerCenterY);
 
         return [tl, tr, br, bl];
     }

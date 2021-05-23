@@ -8,10 +8,6 @@
     <title>Line Rider in Augmented Reality</title>
     <link rel="shortcut icon" type="image/png" href="res/LineRiderCharacter-Rotated.png" />
 
-    <!-- OpenCV.js: import script locally instead of pulling from internet (to avoid download limit) -->
-    <script src="online-scripts/opencv.js"></script>
-    <!-- <script src="https://docs.opencv.org/master/opencv.js"></script> -->
-
     <script src="online-scripts/three.101.min.js"></script>
     <script src="online-scripts/THREEAR.js"></script>
 
@@ -42,6 +38,32 @@
             canny_high_threshold: 50
         };
 
+        // boolean flag for loading of OpenCV
+        var openCVReady = false;
+
+        // function isMobile() {
+        //     try { document.createEvent("TouchEvent"); return true; }
+        //     catch (e) { return false; }
+        // }
+
+        function onOpenCVReady() {
+            cv['onRuntimeInitialized'] = async () => {
+                // notify that OpenCV is ready
+                console.log("OpenCV loaded!");
+                // set flag to true
+                openCVReady = true;
+            }
+        }
+
+        function ensureOpenCVReady() {
+            return new Promise(function (resolve, reject) {
+                (function waitForOpenCVReady() {
+                    if (openCVReady) return resolve();
+                    setTimeout(waitForOpenCVReady, 30);
+                })();
+            });
+        }
+
         window.onload = function () {
 
             loadScene().then((sceneInit) => {
@@ -67,10 +89,7 @@
                 controller.addEventListener("markerFound", fnFound);
                 controller.addEventListener("markerLost", fnLost);
 
-                cv['onRuntimeInitialized'] = () => {
-
-                    // notify that OpenCV is ready
-                    console.log("OpenCV loaded!");
+                ensureOpenCVReady().then(() => {
 
                     let cornersClass = new Corners(pageSetupParams, marker, camera);
                     let imageProcessingClass = new ImageProcessing(processingParams, pageSetupParams, video, liveCanvas);
@@ -83,7 +102,7 @@
                         else { console.log("Marker not found") }
                     }
 
-                    // setInterval(processPage, 1000 / 2);
+                    setInterval(processPage, 1000 / 2);
 
                     //     // // animation
                     //     // function animation() {
@@ -109,10 +128,15 @@
                         // image processing
                         processPage();
                     });
-                }
+                });
             });
-        };
+        }
+
     </script>
+
+    <!-- OpenCV.js: import script locally instead of pulling from internet (to avoid download limit) -->
+    <script async onload="onOpenCVReady()" src="online-scripts/opencv.js"></script>
+    <!-- <script src="https://docs.opencv.org/master/opencv.js"></script> -->
 
     <style>
         .buttons {
