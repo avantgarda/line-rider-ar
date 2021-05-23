@@ -3,8 +3,8 @@
 class ImageProcessing {
     constructor(processingParams, pageSetupParams, video, liveCanvas) {
         // image processing parameters
-        this.low_threshold = processingParams.low_threshold;
-        this.high_threshold = processingParams.high_threshold;
+        this.canny_low_threshold = processingParams.canny_low_threshold;
+        this.canny_high_threshold = processingParams.canny_high_threshold;
 
         // page setup parameters
         this.markerCenterX = pageSetupParams.markerCenterX;
@@ -14,6 +14,8 @@ class ImageProcessing {
 
         this.drawAreaW = pageSetupParams.drawAreaW;
         this.drawAreaH = pageSetupParams.drawAreaH;
+
+        this.drawAreaBorderPercent = pageSetupParams.drawAreaBorderPercent;
 
         // video stream element
         this.video = video;
@@ -25,14 +27,11 @@ class ImageProcessing {
 
         // canvas for live streaming of image processing
         this.liveCanvas = liveCanvas;
-        // liveCanvas.width = w;
-        // liveCanvas.height = h;
-
     }
 
     // download image from URI
     downloadURI(uri, name) {
-        var link = document.createElement("a");
+        let link = document.createElement("a");
         link.download = name;
         link.href = uri;
         document.body.appendChild(link);
@@ -47,7 +46,7 @@ class ImageProcessing {
     }
 
     // image processing
-    imageProcessing() {
+    imageProcessing(sourceCorners) {
 
         // update video dimensions
         this.updateVideoDimensions();
@@ -69,31 +68,33 @@ class ImageProcessing {
         // perspective transform
 
         // get source and destinations parallelogram corners
-        var srcPts = cornerClass.getCorners({ videoWidth: this.videoWidth, videoHeight: this.videoHeight });
-        var destPts = [0, 0, w, 0, w, h, 0, h];
+        let srcPts = sourceCorners;
+        let destPts = [0, 0, w, 0, w, h, 0, h];
 
         let dsize = new cv.Size(w, h);
         let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, srcPts);
         let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, destPts);
         let M = cv.getPerspectiveTransform(srcTri, dstTri);
         cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+        src.delete(); M.delete(); srcTri.delete(); dstTri.delete();
 
         // grayscale
         cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY, 0);
 
         // canny edge detection
-        cv.Canny(dst, dst, this.low_threshold, this.high_threshold, 3, false);
+        cv.Canny(dst, dst, this.canny_low_threshold, this.canny_high_threshold, 3, false);
 
         // dilate and erode
         let N = cv.Mat.ones(5, 5, cv.CV_8U);
         let anchor = new cv.Point(-1, -1);
         // maybe change M or anchor paramter for each
-        cv.dilate(dst, dst, M, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
-        cv.erode(dst, dst, M, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+        cv.dilate(dst, dst, N, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+        cv.erode(dst, dst, N, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+        N.delete();
 
         // mask out marker and border lines
-        numCells = 1 + Math.floor(dst.rows * (this.markerSide + this.markerCenterX) / this.drawAreaH);
-        border = 1 + Math.floor(numCells * this.drawAreaBorderPercent / 100);
+        let numCells = 1 + Math.floor(dst.rows * (this.markerSide + this.markerCenterX) / this.drawAreaH);
+        let border = 1 + Math.floor(numCells * this.drawAreaBorderPercent / 100);
         numCells += border;
         // marker
         for (let i = 0; i < numCells; i++) {
@@ -127,12 +128,14 @@ class ImageProcessing {
         cv.imshow(this.canvas, dst);
 
         // show processing on visible canvas
-        // cv.imshow(processingCanvas, dst);
+        this.liveCanvas.width = w;
+        this.liveCanvas.height = h;
+        cv.imshow(this.liveCanvas, dst);
 
-        // free memory
-        src.delete(); dst.delete(); M.delete(); N.delete(); srcTri.delete(); dstTri.delete();
+        // free remaining memory
+        dst.delete();
 
-        this.downloadURI(this.canvas.toDataURL("image/png"), "cropped");
+        // this.downloadURI(this.canvas.toDataURL("image/png"), "cropped");
     }
 
 }

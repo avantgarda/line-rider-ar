@@ -2,7 +2,7 @@
 
 function loadScene() {
 
-    var renderer = new THREE.WebGLRenderer({
+    let renderer = new THREE.WebGLRenderer({
         // antialias : true,
         alpha: true
     });
@@ -15,16 +15,16 @@ function loadScene() {
     document.body.appendChild(renderer.domElement);
 
     // init scene and camera
-    var scene = new THREE.Scene();
-    var camera = new THREE.Camera();
+    let scene = new THREE.Scene();
+    let camera = new THREE.Camera();
     scene.add(camera);
 
-    var markerGroup = new THREE.Group();
+    let markerGroup = new THREE.Group();
     scene.add(markerGroup);
 
-    var source = new THREEAR.Source({ renderer, camera });
+    let source = new THREEAR.Source({ renderer, camera });
 
-    var patternMarker = new THREEAR.PatternMarker({
+    let patternMarker = new THREEAR.PatternMarker({
         patternUrl: 'res/hiro.patt',
         markerObject: markerGroup
     });
@@ -34,13 +34,13 @@ function loadScene() {
         controller.trackMarker(patternMarker);
 
         // run the rendering loop
-        var lastTimeMsec = 0;
+        let lastTimeMsec = 0;
         requestAnimationFrame(function animate(nowMsec) {
             // keep looping
             requestAnimationFrame(animate);
             // measure time
             lastTimeMsec = lastTimeMsec || nowMsec - 1000 / 60;
-            var deltaMsec = Math.min(200, nowMsec - lastTimeMsec);
+            let deltaMsec = Math.min(200, nowMsec - lastTimeMsec);
             lastTimeMsec = nowMsec;
             // call each update function
             controller.update(source.domElement);
@@ -53,7 +53,7 @@ function loadScene() {
         // return [controller, patternMarker, camera];
         return {
             controller: controller,
-            patternMarker: patternMarker,
+            marker: patternMarker,
             camera: camera
         };
     });

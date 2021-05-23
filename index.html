@@ -16,7 +16,7 @@
     <script src="online-scripts/THREEAR.js"></script>
 
     <!-- anime.js: import anime module separately, as AFRAME.ANIME doesn't seem to work well -->
-    <!-- <script src="online-scripts/anime.min.js"></script> -->
+    <script src="online-scripts/anime.min.js"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script> -->
 
     <script src="my-scripts/sceneLoad.js"></script>
@@ -24,192 +24,92 @@
     <script src="my-scripts/imageProcessing.js"></script>
 
     <script>
+        const pageSetupParams = {
+            // marker location relative to TOP LEFT of draw area (x, z, -y)
+            markerCenterX: 0.5,
+            markerCenterY: 0.5,
+            markerCenterZ: 0.0,
+            markerSide: 1,
+            // draw area in units relative to marker side
+            drawAreaW: 3,
+            drawAreaH: 5,
+            // margin (% of marker side) around draw area to ignore
+            drawAreaBorderPercent: 10
+        };
+
+        const processingParams = {
+            canny_low_threshold: 20,
+            canny_high_threshold: 50
+        };
 
         window.onload = function () {
 
-            var buttonEl = document.querySelector("#action-button");
-
             loadScene().then((sceneInit) => {
 
-                const { controller, patternMarker, camera } = sceneInit;
+                const { controller, marker, camera } = sceneInit;
+
+                const button = document.querySelector("#action-button");
+                const video = document.querySelector("video");
+                const liveCanvas = document.querySelector("#live-canvas");
 
                 fnFound = () => {
-                    buttonEl.style.pointerEvents = "auto";
-                    buttonEl.textContent = "Start Action";
+                    button.style.pointerEvents = "auto";
+                    button.textContent = "Start Action";
                     controller.removeEventListener("markerFound", fnFound);
                 }
 
                 fnLost = () => {
-                    buttonEl.style.pointerEvents = "none";
-                    buttonEl.textContent = "Marker Not Found";
+                    button.style.pointerEvents = "none";
+                    button.textContent = "Marker Not Found";
                     controller.addEventListener("markerFound", fnFound);
                 }
 
                 controller.addEventListener("markerFound", fnFound);
                 controller.addEventListener("markerLost", fnLost);
 
-                // cv['onRuntimeInitialized'] = () => {
+                cv['onRuntimeInitialized'] = () => {
 
-                // notify that OpenCV is ready
-                console.log("OpenCV loaded!");
+                    // notify that OpenCV is ready
+                    console.log("OpenCV loaded!");
 
-                const pageSetupParams = {
-                    // marker location relative to TOP LEFT of draw area (x, z, -y)
-                    markerCenterX: 0.5,
-                    markerCenterY: 0.5,
-                    markerCenterZ: 0.0,
-                    markerSide: 1,
-                    // draw area in units relative to marker side
-                    drawAreaW: 3,
-                    drawAreaH: 5,
-                    // margin (% of marker side) around draw area to ignore
-                    drawAreaBorderPercent: 10
-                };
+                    let cornersClass = new Corners(pageSetupParams, marker, camera);
+                    let imageProcessingClass = new ImageProcessing(processingParams, pageSetupParams, video, liveCanvas);
 
-                // let cornersClass = new Corners(pageSetupParams, patternMarker, camera);
+                    function processPage() {
+                        if (marker.found) {
+                            let sourceCorners = cornersClass.getCorners({ videoWidth: video.videoWidth, videoHeight: video.videoHeight });
+                            imageProcessingClass.imageProcessing(sourceCorners);
+                        }
+                        else { console.log("Marker not found") }
+                    }
 
-                const processingParams = {
-                    low_threshold: 20,
-                    high_threshold: 50
+                    // setInterval(processPage, 1000 / 2);
+
+                    //     // // animation
+                    //     // function animation() {
+                    //     //     anime({
+                    //     //         // (x, z, -y)
+                    //     //         targets: cube.position,
+                    //     //         keyframes: [
+                    //     //             { x: "1.5", y: "0.5", z: "0" },
+                    //     //             { x: "1.5", y: "0.5", z: "1.5" },
+                    //     //             { x: "0", y: "0.5", z: "1.5" },
+                    //     //             { x: "0", y: "0.5", z: "0" }
+                    //     //         ],
+                    //     //         easing: "linear",
+                    //     //         duration: 2000
+                    //     //     });
+                    //     // }
+
+                    button.addEventListener("click", function () {
+
+                        // animate
+                        // animation();
+
+                        // image processing
+                        processPage();
+                    });
                 }
-
-                var videoEl = document.querySelector('video');
-
-                // // hidden canvas elements for image processing
-                // var canvasEl = document.createElement("canvas");
-                // var context2d = canvasEl.getContext('2d');
-
-                // // make draw area the same height as the video (arbitrary)
-                // var h = parseInt(videoEl.videoHeight);
-                // var w = h * pageSetupParams.drawAreaW / pageSetupParams.drawAreaH;
-
-                // prepare canvas for live streaming of image processing
-                var processingCanvas = document.querySelector('#processing-canvas');
-                // processingCanvas.width = w;
-                // processingCanvas.height = h;
-
-                let imageProcessingClass = new ImageProcessing(processingParams, pageSetupParams, videoEl, processingCanvas);
-
-                // // download image from URI
-                // function downloadURI(uri, name) {
-                //     var link = document.createElement("a");
-                //     link.download = name;
-                //     link.href = uri;
-                //     document.body.appendChild(link);
-                //     link.click();
-                //     document.body.removeChild(link);
-                //     delete link;
-                // }
-
-                // // image processing
-                // function imageProcessing() {
-
-                //     //// get latest video frame
-                //     canvasEl.width = videoEl.videoWidth;
-                //     canvasEl.height = videoEl.videoHeight;
-                //     context2d.drawImage(videoEl, 0, 0);
-
-                //     //// image processing OpenCV
-
-                //     let src = cv.imread(canvasEl);
-                //     let dst = new cv.Mat();
-
-                //     // perspective transform
-
-                //     // get source and destinations parallelogram corners
-                //     var srcPts = cornersClass.getCorners({ videoWidth: videoEl.videoWidth, videoHeight: videoEl.videoHeight });
-                //     var destPts = [0, 0, w, 0, w, h, 0, h];
-
-                //     let dsize = new cv.Size(w, h);
-                //     let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, srcPts);
-                //     let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, destPts);
-                //     let M = cv.getPerspectiveTransform(srcTri, dstTri);
-                //     cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-
-                //     // grayscale
-                //     cv.cvtColor(dst, dst, cv.COLOR_RGBA2GRAY, 0);
-
-                //     // canny edge detection
-                //     cv.Canny(dst, dst, low_threshold, high_threshold, 3, false);
-
-                //     // dilate and erode
-                //     let N = cv.Mat.ones(5, 5, cv.CV_8U);
-                //     let anchor = new cv.Point(-1, -1);
-                //     // maybe change M or anchor paramter for each
-                //     cv.dilate(dst, dst, M, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
-                //     cv.erode(dst, dst, M, anchor, 1, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
-
-                //     // mask out marker and border lines
-                //     numCells = 1 + Math.floor(dst.rows * (pageSetupParams.markerSide + pageSetupParams.markerCenterX) / pageSetupParams.drawAreaH);
-                //     border = 1 + Math.floor(numCells * pageSetupParams.drawAreaBorderPercent / 100);
-                //     numCells += border;
-                //     // marker
-                //     for (let i = 0; i < numCells; i++) {
-                //         for (let j = 0; j < numCells; j++) {
-                //             dst.ucharPtr(i, j)[0] = 0;
-                //         }
-                //     }
-                //     // border
-                //     for (let i = 0; i < dst.rows; i++) {
-                //         for (let j = 0; j < dst.cols; j++) {
-                //             if ((i < border) || (i > (dst.rows - border)) || (j < border) || (j > (dst.cols - border))) {
-                //                 dst.ucharPtr(i, j)[0] = 0;
-                //             }
-                //         }
-                //     }
-
-                //     // find contours
-                //     let contours = new cv.MatVector();
-                //     let hierarchy = new cv.Mat();
-                //     // You can try more different parameters
-                //     cv.findContours(dst, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
-                //     // draw contours with random Scalar
-                //     for (let i = 0; i < contours.size(); ++i) {
-                //         let color = new cv.Scalar(Math.round(Math.random() * 255), Math.round(Math.random() * 255),
-                //             Math.round(Math.random() * 255));
-                //         cv.drawContours(dst, contours, i, color, 1, cv.LINE_8, hierarchy, 100);
-                //     }
-                //     contours.delete(); hierarchy.delete();
-
-                //     // save processed image back to hidden canvas
-                //     cv.imshow(canvasEl, dst);
-
-                //     // show processing on visible canvas
-                //     // cv.imshow(processingCanvas, dst);
-
-                //     // free memory
-                //     src.delete(); dst.delete(); M.delete(); N.delete(); srcTri.delete(); dstTri.delete();
-
-                //     downloadURI(canvasEl.toDataURL("image/png"), "cropped");
-                // }
-
-                // setInterval(imageProcessing, 1000 / 2);
-
-                // // animation
-                // function animation() {
-                //     anime({
-                //         // (x, z, -y)
-                //         targets: cube.position,
-                //         keyframes: [
-                //             { x: "1.5", y: "0.5", z: "0" },
-                //             { x: "1.5", y: "0.5", z: "1.5" },
-                //             { x: "0", y: "0.5", z: "1.5" },
-                //             { x: "0", y: "0.5", z: "0" }
-                //         ],
-                //         easing: "linear",
-                //         duration: 2000
-                //     });
-                // }
-
-                buttonEl.addEventListener("click", function () {
-
-                    // animate
-                    // animation();
-
-                    // image processing
-                    imageProcessingClass.imageProcessing();
-                });
-                // }
             });
         };
     </script>
@@ -246,7 +146,7 @@
         <button id="action-button" style="pointer-events: none">Marker Not Found</button>
     </div>
 
-    <canvas id="processing-canvas" position="absolute" z-index="10" style="background-color: gray"></canvas>
+    <canvas id="live-canvas" position="absolute" z-index="10" style="background-color: gray"></canvas>
 
 </body>
 
