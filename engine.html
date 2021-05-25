@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="online-scripts/line-rider-engine.js"></script>
+    <script>
+
+        // const DEFAULT_START = {
+        //     position: _constants.DEFAULT_START_POSITION,
+        //     velocity: _constants.DEFAULT_START_VELOCITY
+        // };
+
+        function myTest() {
+            let engine = new LineRiderEngine.default();
+
+            // let rider = engine.getRider(i).position;
+
+            // rider.x rider.y
+
+            const LINE = { id: 0, type: _LineRiderEngine.LineTypes.SOLID, x1: 0, y1: 5, x2: 30, y2: 5 };
+
+            let engineWithLine = engine.addLine((0, _LineRiderEngine.createLineFromJson)(LINE));
+
+            // // read in track from JSON
+            // let track = require('../fixtures/cripple.track.json');
+            // let engineFromTrack = engine.setStart(track.startPosition).addLine(track.lines.map(_lineRiderEngine.createLineFromJson));
+
+            for (let i = 0; i < 10; i += 1) {
+                var rider = engineWithLine.getRider(i);
+                // var rider = engineFromTrack.getRider(i);
+                console.log(rider.position.x, rider.position.y);
+                // console.log(rider.get('SHOULDER').pos);
+                // console.log(rider.get('BUTT').pos);
+                // console.log(rider.get('NOSE').pos);
+                // console.log(rider.get('RIDER_MOUNTED'));
+                // console.log(rider.get('RIDER_MOUNTED').framesSinceUnbind);
+            }
+        }
+
+        myTest();
+
+</script>
+</head>
+
+<body>
+
+</body>
+
+</html>
