@@ -136,7 +136,7 @@ class ImageProcessing {
             cnt.delete(); tmp.delete();
         }
 
-        let dstPoly = new cv.Mat(dst.rows, dst.cols, cv.CV_8U);
+        let dstPoly = new cv.Mat.zeros(dst.rows, dst.cols, cv.CV_8UC3);
         // draw polygon approximations with random Scalar
         for (let i = 0; i < contours.size(); ++i) {
             // draw normal contours

@@ -8,8 +8,11 @@
     <title>Line Rider in Augmented Reality</title>
     <link rel="shortcut icon" type="image/png" href="res/LineRiderCharacter-Rotated.png" />
 
+    <!-- not use how to use CDN for Three.js import -->
     <script src="online-scripts/three.101.min.js"></script>
     <!-- <script type="module">import three from 'https://cdn.skypack.dev/three';</script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">import * as THREE from '@<version>';</script> -->
+
     <script src="online-scripts/THREEAR.js"></script>
     <!-- <script src="https://unpkg.com/threear"></script> -->
     <script src="online-scripts/anime.min.js"></script>
@@ -112,26 +115,52 @@
 
                     // setInterval(processPage, 1000 / 2);
 
-                    //     // // animation
-                    //     // function animation() {
-                    //     //     anime({
-                    //     //         // (x, z, -y)
-                    //     //         targets: cube.position,
-                    //     //         keyframes: [
-                    //     //             { x: "1.5", y: "0.5", z: "0" },
-                    //     //             { x: "1.5", y: "0.5", z: "1.5" },
-                    //     //             { x: "0", y: "0.5", z: "1.5" },
-                    //     //             { x: "0", y: "0.5", z: "0" }
-                    //     //         ],
-                    //     //         easing: "linear",
-                    //     //         duration: 2000
-                    //     //     });
-                    //     // }
+                    var geometry = new THREE.PlaneGeometry(1, 1);
+                    const texture = new THREE.TextureLoader().load('res/LineRiderCharacter.png');
+                    // immediately use the texture for material creation
+                    var material = new THREE.MeshBasicMaterial({
+                        transparent: true,
+                        opacity: 0.75,
+                        map: texture
+                    });
+                    var character = new THREE.Mesh(geometry, material);
+                    character.rotateX(-Math.PI / 2);
+                    marker.markerObject.add(character)
+
+                    // animation
+                    function animation() {
+
+                        anime({
+                            // (x, z, -y)
+                            targets: character.position,
+                            keyframes: [
+                                { x: "1.5", z: "0" },
+                                { x: "1.5", z: "1.5" },
+                                { x: "0", z: "1.5" },
+                                { x: "0", z: "0" }
+                            ],
+                            easing: "linear",
+                            duration: 2000
+                        });
+
+                        anime({
+                            // doesn't wrap around 2PI, reverses direction!
+                            targets: character.rotation,
+                            keyframes: [
+                                { z: Math.PI / 2 },
+                                { z: Math.PI },
+                                { z: 3 * Math.PI / 2 },
+                                { z: 2 * Math.PI }
+                            ],
+                            easing: "linear",
+                            duration: 2000
+                        });
+                    }
 
                     button.addEventListener("click", function () {
 
                         // animate
-                        // animation();
+                        animation();
 
                         // image processing
                         processPage();

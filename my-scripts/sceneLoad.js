@@ -24,12 +24,12 @@ function loadScene() {
 
     let source = new THREEAR.Source({ renderer, camera });
 
-    let patternMarker = new THREEAR.PatternMarker({
-        patternUrl: 'res/hiro.patt',
-        markerObject: markerGroup
-    });
-
     let sceneInit = THREEAR.initialize({ source: source }).then((controller) => {
+
+        let patternMarker = new THREEAR.PatternMarker({
+            patternUrl: 'res/hiro.patt',
+            markerObject: markerGroup
+        });
 
         controller.trackMarker(patternMarker);
 
