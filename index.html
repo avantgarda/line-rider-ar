@@ -21,6 +21,7 @@
     <script src="my-scripts/sceneLoad.js"></script>
     <script src="my-scripts/getCorners.js"></script>
     <script src="my-scripts/imageProcessing.js"></script>
+    <script src="my-scripts/convertToTrack.js"></script>
 
     <script>
         const pageSetupParams = {
@@ -108,14 +109,14 @@
                     function processPage() {
                         if (marker.found) {
                             let sourceCorners = cornersClass.getCorners({ videoWidth: video.videoWidth, videoHeight: video.videoHeight });
-                            imageProcessingClass.imageProcessing(sourceCorners);
+                            return imageProcessingClass.imageProcessing(sourceCorners);
                         }
                         else { console.log("Marker not found") }
                     }
 
                     // setInterval(processPage, 1000 / 2);
 
-                    var geometry = new THREE.PlaneGeometry(1, 1);
+                    var geometry = new THREE.PlaneGeometry(0.075, 0.075);
                     const texture = new THREE.TextureLoader().load('res/LineRiderCharacter.png');
                     // immediately use the texture for material creation
                     var material = new THREE.MeshBasicMaterial({
@@ -130,31 +131,70 @@
                     // animation
                     function animation() {
 
-                        anime({
-                            // (x, z, -y)
-                            targets: character.position,
-                            keyframes: [
-                                { x: "1.5", z: "0" },
-                                { x: "1.5", z: "1.5" },
-                                { x: "0", z: "1.5" },
-                                { x: "0", z: "0" }
-                            ],
-                            easing: "linear",
-                            duration: 2000
-                        });
+                        // fetch('res/movements.json')
+                        //     .then(response => response.json())
+                        //     .then(json => console.log(json));
 
-                        anime({
-                            // doesn't wrap around 2PI, reverses direction!
-                            targets: character.rotation,
-                            keyframes: [
-                                { z: Math.PI / 2 },
-                                { z: Math.PI },
-                                { z: 3 * Math.PI / 2 },
-                                { z: 2 * Math.PI }
-                            ],
-                            easing: "linear",
-                            duration: 2000
-                        });
+                        fetch('res/movements.json')
+                            .then(response => response.json())
+                            .then(json => {
+                                // console.log(json);
+                                let scaled = [];
+                                json.movements.forEach((pos) => {
+                                    var x = -0.085 - pageSetupParams.markerCenterX + pageSetupParams.drawAreaH * pos.x / video.videoHeight;
+                                    var z = -0.085 - pageSetupParams.markerCenterY + pageSetupParams.drawAreaH * pos.z / video.videoHeight;
+                                    scaled.push({x, z});
+                                });
+
+                                anime({
+                                    // (x, z, -y)
+                                    targets: character.position,
+                                    keyframes: scaled,
+                                    easing: "linear",
+                                    duration: 20000
+                                })
+                            });
+
+                        // let temp = [
+                        //     { x: "1.5", z: "0" },
+                        //     { x: "1.5", z: "1.5" },
+                        //     { x: "0", z: "1.5" },
+                        //     { x: "0", z: "0" }
+                        // ]
+
+                        // anime({
+                        //     // (x, z, -y)
+                        //     targets: character.position,
+                        //     keyframes: temp,
+                        //     easing: "linear",
+                        //     duration: 2000
+                        // });
+
+                        // anime({
+                        //     // (x, z, -y)
+                        //     targets: character.position,
+                        //     keyframes: [
+                        //         { x: "1.5", z: "0" },
+                        //         { x: "1.5", z: "1.5" },
+                        //         { x: "0", z: "1.5" },
+                        //         { x: "0", z: "0" }
+                        //     ],
+                        //     easing: "linear",
+                        //     duration: 2000
+                        // });
+
+                        // anime({
+                        //     // doesn't wrap around 2PI, reverses direction!
+                        //     targets: character.rotation,
+                        //     keyframes: [
+                        //         { z: Math.PI / 2 },
+                        //         { z: Math.PI },
+                        //         { z: 3 * Math.PI / 2 },
+                        //         { z: 2 * Math.PI }
+                        //     ],
+                        //     easing: "linear",
+                        //     duration: 2000
+                        // });
                     }
 
                     button.addEventListener("click", function () {
@@ -163,7 +203,9 @@
                         animation();
 
                         // image processing
-                        processPage();
+                        // let points = processPage();
+
+                        // console.log(convertToTrack(points));
                     });
                 });
             });

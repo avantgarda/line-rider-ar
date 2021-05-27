@@ -175,7 +175,9 @@ class ImageProcessing {
         // free remaining memory
         dst.delete(); dstPoly.delete();
 
-        this.downloadURI(this.liveCanvas.toDataURL("image/png"), "cropped");
+        // this.downloadURI(this.liveCanvas.toDataURL("image/png"), "cropped");
+
+        return points;
     }
 
 }
