@@ -1,7 +1,7 @@
 "use strict";
 
 class ImageProcessing {
-    constructor(processingParams, pageSetupParams, video, liveCanvas) {
+    constructor(processingParams, pageSetupParams, video) {
         // image processing parameters
         this.canny_low_threshold = processingParams.canny_low_threshold;
         this.canny_high_threshold = processingParams.canny_high_threshold;
@@ -31,20 +31,6 @@ class ImageProcessing {
         // hidden canvas elements for image processing
         this.canvas = document.createElement("canvas");
         this.context2d = this.canvas.getContext('2d');
-
-        // canvas for live streaming of image processing
-        this.liveCanvas = liveCanvas;
-    }
-
-    // download image from URI
-    downloadURI(uri, name) {
-        let link = document.createElement("a");
-        link.download = name;
-        link.href = uri;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        link = null;
     }
 
     updateVideoDimensions() {
@@ -136,16 +122,6 @@ class ImageProcessing {
             cnt.delete(); tmp.delete();
         }
 
-        let dstPoly = new cv.Mat.zeros(dst.rows, dst.cols, cv.CV_8UC3);
-        // draw polygon approximations with random Scalar
-        for (let i = 0; i < contours.size(); ++i) {
-            // draw normal contours
-            let color = new cv.Scalar(Math.round(Math.random() * 255), Math.round(Math.random() * 255),
-                Math.round(Math.random() * 255));
-            // let color = new cv.Scalar(255, 255, 255);
-            cv.drawContours(dstPoly, poly, i, color, 1, cv.LINE_8, hierarchy, 100);
-        }
-
         const points = {}
         for (let i = 0; i < poly.size(); ++i) {
             const ci = poly.get(i)
@@ -158,24 +134,8 @@ class ImageProcessing {
             }
         }
 
-        console.log(points);
-
-        contours.delete(); hierarchy.delete(); poly.delete();
-
-        // // save processed image back to hidden canvas
-        // this.canvas.width = w;
-        // this.canvas.height = h;
-        // cv.imshow(this.canvas, dst);
-
-        // show processing on visible canvas
-        this.liveCanvas.width = w;
-        this.liveCanvas.height = h;
-        cv.imshow(this.liveCanvas, dstPoly);
-
         // free remaining memory
-        dst.delete(); dstPoly.delete();
-
-        // this.downloadURI(this.liveCanvas.toDataURL("image/png"), "cropped");
+        dst.delete(); contours.delete(); hierarchy.delete(); poly.delete();
 
         return points;
     }

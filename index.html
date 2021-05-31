@@ -8,20 +8,22 @@
     <title>Line Rider in Augmented Reality</title>
     <link rel="shortcut icon" type="image/png" href="res/LineRiderCharacter-Rotated.png" />
 
-    <!-- not use how to use CDN for Three.js import -->
+    <!-- this is library is pulled from a local copy -->
     <script src="online-scripts/three.101.min.js"></script>
-    <!-- <script type="module">import three from 'https://cdn.skypack.dev/three';</script> -->
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">import * as THREE from '@<version>';</script> -->
 
-    <script src="online-scripts/THREEAR.js"></script>
-    <!-- <script src="https://unpkg.com/threear"></script> -->
-    <script src="online-scripts/anime.min.js"></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script> -->
+    <!-- these libraries are pulled from repositories on the internet -->
+    <script src="https://unpkg.com/threear"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <script src="https://docs.opencv.org/master/opencv.js"></script>
 
+    <!-- these are custom scripts written for this implementation -->
     <script src="my-scripts/sceneLoad.js"></script>
     <script src="my-scripts/getCorners.js"></script>
     <script src="my-scripts/imageProcessing.js"></script>
     <script src="my-scripts/convertToTrack.js"></script>
+
+    <!-- this script features the official Line Rider engine with some customistation -->
+    <script src="my-scripts/gameEngine.js"></script>
 
     <script>
         const pageSetupParams = {
@@ -47,34 +49,11 @@
             dilateIters: 1,
             erodeIters: 1, // 3
             // approximate polygon
-            polygonEpsilon: 3 // 1
+            polygonEpsilon: 2 // 3
         };
 
-        // boolean flag for loading of OpenCV
-        var openCVReady = false;
-
-        // function isMobile() {
-        //     try { document.createEvent("TouchEvent"); return true; }
-        //     catch (e) { return false; }
-        // }
-
-        function onOpenCVReady() {
-            cv['onRuntimeInitialized'] = async () => {
-                // notify that OpenCV is ready
-                console.log("OpenCV loaded!");
-                // set flag to true
-                openCVReady = true;
-            }
-        }
-
-        function ensureOpenCVReady() {
-            return new Promise(function (resolve, reject) {
-                (function waitForOpenCVReady() {
-                    if (openCVReady) return resolve();
-                    setTimeout(waitForOpenCVReady, 30);
-                })();
-            });
-        }
+        // change size of rider
+        const riderSizeMultiplier = 2;
 
         window.onload = function () {
 
@@ -84,11 +63,10 @@
 
                 const button = document.querySelector("#action-button");
                 const video = document.querySelector("video");
-                const liveCanvas = document.querySelector("#live-canvas");
 
                 fnFound = () => {
                     button.style.pointerEvents = "auto";
-                    button.textContent = "Start Action";
+                    button.textContent = "Play";
                     controller.removeEventListener("markerFound", fnFound);
                 }
 
@@ -101,121 +79,66 @@
                 controller.addEventListener("markerFound", fnFound);
                 controller.addEventListener("markerLost", fnLost);
 
-                ensureOpenCVReady().then(() => {
+                let cornersClass = new Corners(pageSetupParams, marker, camera);
+                let imageProcessingClass = new ImageProcessing(processingParams, pageSetupParams, video);
 
-                    let cornersClass = new Corners(pageSetupParams, marker, camera);
-                    let imageProcessingClass = new ImageProcessing(processingParams, pageSetupParams, video, liveCanvas);
-
-                    function processPage() {
-                        if (marker.found) {
-                            let sourceCorners = cornersClass.getCorners({ videoWidth: video.videoWidth, videoHeight: video.videoHeight });
-                            return imageProcessingClass.imageProcessing(sourceCorners);
-                        }
-                        else { console.log("Marker not found") }
+                function processPage() {
+                    if (marker.found) {
+                        let sourceCorners = cornersClass.getCorners({ videoWidth: video.videoWidth, videoHeight: video.videoHeight });
+                        return imageProcessingClass.imageProcessing(sourceCorners);
                     }
+                    else { console.log("Marker not found") }
+                }
 
-                    // setInterval(processPage, 1000 / 2);
+                var geometry = new THREE.PlaneGeometry(0.125 * riderSizeMultiplier, 0.125 * riderSizeMultiplier);
+                const texture = new THREE.TextureLoader().load('res/LineRiderCharacter.png');
+                // immediately use the texture for material creation
+                var material = new THREE.MeshBasicMaterial({
+                    transparent: true,
+                    opacity: 0.75,
+                    map: texture
+                });
+                var character = new THREE.Mesh(geometry, material);
+                character.rotateX(-Math.PI / 2);
+                marker.markerObject.add(character)
 
-                    var geometry = new THREE.PlaneGeometry(0.075, 0.075);
-                    const texture = new THREE.TextureLoader().load('res/LineRiderCharacter.png');
-                    // immediately use the texture for material creation
-                    var material = new THREE.MeshBasicMaterial({
-                        transparent: true,
-                        opacity: 0.75,
-                        map: texture
+                function htmlEventHandler(e) {
+
+                    let scaled = [];
+                    e.detail.movements.forEach((pos) => {
+                        scaled.push(trackToMarkerCoordinates(pos, pageSetupParams, video.videoHeight, riderSizeMultiplier));
                     });
-                    var character = new THREE.Mesh(geometry, material);
-                    character.rotateX(-Math.PI / 2);
-                    marker.markerObject.add(character)
 
-                    // animation
-                    function animation() {
+                    anime({
+                        // (x, z, -y)
+                        targets: character.position,
+                        keyframes: scaled,
+                        easing: "linear",
+                        duration: 1000 * scaled.length / 24
+                    })
+                }
 
-                        // fetch('res/movements.json')
-                        //     .then(response => response.json())
-                        //     .then(json => console.log(json));
+                document.addEventListener('module2html', htmlEventHandler, false);
 
-                        fetch('res/movements.json')
-                            .then(response => response.json())
-                            .then(json => {
-                                // console.log(json);
-                                let scaled = [];
-                                json.movements.forEach((pos) => {
-                                    var x = -0.085 - pageSetupParams.markerCenterX + pageSetupParams.drawAreaH * pos.x / video.videoHeight;
-                                    var z = -0.085 - pageSetupParams.markerCenterY + pageSetupParams.drawAreaH * pos.z / video.videoHeight;
-                                    scaled.push({x, z});
-                                });
-
-                                anime({
-                                    // (x, z, -y)
-                                    targets: character.position,
-                                    keyframes: scaled,
-                                    easing: "linear",
-                                    duration: 20000
-                                })
-                            });
-
-                        // let temp = [
-                        //     { x: "1.5", z: "0" },
-                        //     { x: "1.5", z: "1.5" },
-                        //     { x: "0", z: "1.5" },
-                        //     { x: "0", z: "0" }
-                        // ]
-
-                        // anime({
-                        //     // (x, z, -y)
-                        //     targets: character.position,
-                        //     keyframes: temp,
-                        //     easing: "linear",
-                        //     duration: 2000
-                        // });
-
-                        // anime({
-                        //     // (x, z, -y)
-                        //     targets: character.position,
-                        //     keyframes: [
-                        //         { x: "1.5", z: "0" },
-                        //         { x: "1.5", z: "1.5" },
-                        //         { x: "0", z: "1.5" },
-                        //         { x: "0", z: "0" }
-                        //     ],
-                        //     easing: "linear",
-                        //     duration: 2000
-                        // });
-
-                        // anime({
-                        //     // doesn't wrap around 2PI, reverses direction!
-                        //     targets: character.rotation,
-                        //     keyframes: [
-                        //         { z: Math.PI / 2 },
-                        //         { z: Math.PI },
-                        //         { z: 3 * Math.PI / 2 },
-                        //         { z: 2 * Math.PI }
-                        //     ],
-                        //     easing: "linear",
-                        //     duration: 2000
-                        // });
-                    }
-
-                    button.addEventListener("click", function () {
-
-                        // animate
-                        animation();
-
-                        // image processing
-                        // let points = processPage();
-
-                        // console.log(convertToTrack(points));
+                function communicate(track, frames) {
+                    const event = new CustomEvent('html2module', {
+                        detail: { "frames": frames, "track": track }
                     });
+
+                    document.dispatchEvent(event);
+                }
+
+                button.addEventListener("click", function () {
+
+                    // image processing
+                    let points = processPage();
+
+                    communicate(convertToTrack(points, riderSizeMultiplier), 500);
                 });
             });
         }
 
     </script>
-
-    <!-- OpenCV.js: import script locally instead of pulling from internet (to avoid download limit) -->
-    <script async onload="onOpenCVReady()" src="online-scripts/opencv.js"></script>
-    <!-- <script src="https://docs.opencv.org/master/opencv.js"></script> -->
 
     <style>
         .buttons {
@@ -248,8 +171,6 @@
     <div class="buttons">
         <button id="action-button" style="pointer-events: none">Marker Not Found</button>
     </div>
-
-    <canvas id="live-canvas" position="absolute" z-index="10" style="background-color: gray"></canvas>
 
 </body>
 
