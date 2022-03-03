@@ -8,10 +8,9 @@
     <title>Line Rider in Augmented Reality</title>
     <link rel="shortcut icon" type="image/png" href="res/LineRiderCharacter-Rotated.png" />
 
-    <!-- this is library is pulled from a local copy -->
-    <script src="online-scripts/three.101.min.js"></script>
 
     <!-- these libraries are pulled from repositories on the internet -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r101/three.min.js"></script>
     <script src="https://unpkg.com/threear"></script>
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
     <script src="https://docs.opencv.org/master/opencv.js"></script>
@@ -114,7 +113,7 @@
                         targets: character.position,
                         keyframes: scaled,
                         easing: "linear",
-                        duration: 1000 * scaled.length / 24
+                        duration: 1000 * scaled.length / 10 
                     })
                 }
 
